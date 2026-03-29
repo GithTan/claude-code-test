@@ -26,6 +26,9 @@ Everything lives in `snake.html`:
 
 ## Git Workflow
 
-- Commit after every meaningful change with format: `<type>: <short description>`
-  - Types: `feat`, `fix`, `style`, `refactor`
-- Push to `origin/main` (GitHub: `GithTan/claude-code-test`) after each commit
+After every meaningful unit of work — a feature added, a bug fixed, a refactor completed — commit and push immediately. Do not batch up multiple changes into one commit. This ensures work is never lost and the history is easy to revert.
+
+- Commit format: `<type>: <short description>`
+  - Types: `feat`, `fix`, `style`, `refactor`, `docs`
+- Always push to `origin/main` (GitHub: `GithTan/claude-code-test`) right after committing
+- Never leave completed work uncommitted at the end of a task
