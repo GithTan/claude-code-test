@@ -1,6 +1,5 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabase'
 
 const navItems = [
   { label: 'Dashboard', to: '/' },
@@ -14,15 +13,11 @@ const navItems = [
 ]
 
 export default function Layout({ children }) {
-  const { user, role } = useAuth()
+  const { user, role, signOut } = useAuth()
 
   const visibleItems = navItems.filter(item =>
     !item.adminOnly || role === 'admin'
   )
-
-  async function handleLogout() {
-    await supabase.auth.signOut()
-  }
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -30,7 +25,7 @@ export default function Layout({ children }) {
         <div className="p-4 border-b border-gray-700">
           <h1 className="font-bold text-lg">Elevator App</h1>
           <p className="text-xs text-gray-400 mt-1 capitalize">
-            {role?.replace('_', ' ')}
+            {role?.replaceAll('_', ' ')}
           </p>
         </div>
 
@@ -56,7 +51,7 @@ export default function Layout({ children }) {
         <div className="p-4 border-t border-gray-700">
           <p className="text-xs text-gray-400 truncate mb-2">{user?.email}</p>
           <button
-            onClick={handleLogout}
+            onClick={signOut}
             className="text-xs text-gray-400 hover:text-white"
           >
             Sign out

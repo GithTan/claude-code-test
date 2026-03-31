@@ -1,9 +1,19 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Layout from './components/Layout'
 import PrivateRoute from './components/PrivateRoute'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+
+function ProtectedLayout() {
+  return (
+    <PrivateRoute>
+      <Layout>
+        <Outlet />
+      </Layout>
+    </PrivateRoute>
+  )
+}
 
 function AppRoutes() {
   const { user, loading } = useAuth()
@@ -22,18 +32,10 @@ function AppRoutes() {
         path="/login"
         element={user ? <Navigate to="/" replace /> : <Login />}
       />
-      <Route
-        path="/*"
-        element={
-          <PrivateRoute>
-            <Layout>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-              </Routes>
-            </Layout>
-          </PrivateRoute>
-        }
-      />
+      <Route element={<ProtectedLayout />}>
+        <Route path="/" element={<Dashboard />} />
+        {/* Plan 2 routes go here */}
+      </Route>
     </Routes>
   )
 }

@@ -7,19 +7,11 @@ vi.mock('../contexts/AuthContext', () => ({
   useAuth: vi.fn()
 }))
 
-vi.mock('../lib/supabase', () => ({
-  supabase: {
-    auth: {
-      signOut: vi.fn().mockResolvedValue({})
-    }
-  }
-}))
-
 import { useAuth } from '../contexts/AuthContext'
 
 describe('Layout', () => {
   it('shows all nav items for admin', () => {
-    useAuth.mockReturnValue({ user: { email: 'admin@test.com' }, role: 'admin' })
+    useAuth.mockReturnValue({ user: { email: 'admin@test.com' }, role: 'admin', signOut: vi.fn() })
     render(
       <MemoryRouter>
         <Layout><div>content</div></Layout>
@@ -35,7 +27,7 @@ describe('Layout', () => {
   })
 
   it('hides Invoices for operations_manager', () => {
-    useAuth.mockReturnValue({ user: { email: 'ops@test.com' }, role: 'operations_manager' })
+    useAuth.mockReturnValue({ user: { email: 'ops@test.com' }, role: 'operations_manager', signOut: vi.fn() })
     render(
       <MemoryRouter>
         <Layout><div>content</div></Layout>

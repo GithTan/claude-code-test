@@ -14,7 +14,11 @@ export function AuthProvider({ children }) {
       .select('role, full_name')
       .eq('id', userId)
       .single()
-    if (data) setRole(data.role)
+    if (data) {
+      setRole(data.role)
+    } else {
+      await supabase.auth.signOut()
+    }
   }
 
   useEffect(() => {
@@ -35,14 +39,19 @@ export function AuthProvider({ children }) {
         } else {
           setRole(null)
         }
+        setLoading(false)
       }
     )
 
     return () => subscription.unsubscribe()
   }, [])
 
+  async function signOut() {
+    await supabase.auth.signOut()
+  }
+
   return (
-    <AuthContext.Provider value={{ user, role, loading }}>
+    <AuthContext.Provider value={{ user, role, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   )
