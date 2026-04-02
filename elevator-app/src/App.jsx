@@ -9,6 +9,7 @@ import CustomerForm from './pages/customers/CustomerForm'
 import CustomerDetail from './pages/customers/CustomerDetail'
 import BuildingForm from './pages/buildings/BuildingForm'
 import ElevatorList from './pages/elevators/ElevatorList'
+import AllElevatorList from './pages/elevators/AllElevatorList'
 import ElevatorForm from './pages/elevators/ElevatorForm'
 import ElevatorDetail from './pages/elevators/ElevatorDetail'
 import MaintenanceList from './pages/maintenance/MaintenanceList'
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route path="/customers/:id" element={<CustomerDetail />} />
         <Route path="/customers/:id/edit" element={<CustomerForm />} />
         <Route path="/customers/:customerId/buildings/new" element={<BuildingForm />} />
+        <Route path="/elevators" element={<AllElevatorList />} />
         <Route path="/buildings/:buildingId/elevators" element={<ElevatorList />} />
         <Route path="/buildings/:buildingId/elevators/new" element={<ElevatorForm />} />
         <Route path="/elevators/:id" element={<ElevatorDetail />} />

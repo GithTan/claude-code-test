@@ -32,6 +32,12 @@ export async function updateBuilding(id, data) {
 export async function getElevators(buildingId) {
   return supabase.from('elevators').select('*').eq('building_id', buildingId).order('unit_number')
 }
+export async function getAllElevators() {
+  return supabase
+    .from('elevators')
+    .select('*, buildings(name, customers(name))')
+    .order('unit_number')
+}
 export async function getElevator(id) {
   return supabase.from('elevators').select('*').eq('id', id).single()
 }
