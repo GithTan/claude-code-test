@@ -23,6 +23,11 @@ import ProjectList from './pages/projects/ProjectList'
 import ProjectForm from './pages/projects/ProjectForm'
 import ProjectDetail from './pages/projects/ProjectDetail'
 import Reports from './pages/reports/Reports'
+import AmcList from './pages/contracts/AmcList'
+import AmcForm from './pages/contracts/AmcForm'
+import AmcDetail from './pages/contracts/AmcDetail'
+import BreakdownList from './pages/breakdowns/BreakdownList'
+import BreakdownForm from './pages/breakdowns/BreakdownForm'
 
 function ProtectedLayout() {
   return (
@@ -66,6 +71,13 @@ function AppRoutes() {
         <Route path="/jobs" element={<JobList />} />
         <Route path="/jobs/new" element={<JobForm />} />
         <Route path="/jobs/:jobId/edit" element={<JobForm />} />
+        <Route path="/contracts" element={<AmcList />} />
+        <Route path="/contracts/new" element={<AmcForm />} />
+        <Route path="/contracts/:id" element={<AmcDetail />} />
+        <Route path="/contracts/:id/edit" element={<AmcForm />} />
+        <Route path="/breakdowns" element={<BreakdownList />} />
+        <Route path="/breakdowns/new" element={<BreakdownForm />} />
+        <Route path="/breakdowns/:id/edit" element={<BreakdownForm />} />
         <Route path="/invoices" element={<PrivateRoute adminOnly><InvoiceList /></PrivateRoute>} />
         <Route path="/invoices/new" element={<PrivateRoute adminOnly><InvoiceForm /></PrivateRoute>} />
         <Route path="/invoices/:id" element={<PrivateRoute adminOnly><InvoiceDetail /></PrivateRoute>} />
