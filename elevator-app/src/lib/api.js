@@ -200,3 +200,63 @@ export async function getMonthlyRevenue() {
     .select('amount, payment_date')
     .order('payment_date', { ascending: false })
 }
+
+// AMC Contracts
+export async function getAmcContracts() {
+  return supabase
+    .from('amc_contracts')
+    .select('*, customers(name)')
+    .order('end_date')
+}
+export async function getAmcContract(id) {
+  return supabase
+    .from('amc_contracts')
+    .select('*, customers(name)')
+    .eq('id', id)
+    .single()
+}
+export async function createAmcContract(data) {
+  return supabase.from('amc_contracts').insert(data).select().single()
+}
+export async function updateAmcContract(id, data) {
+  return supabase.from('amc_contracts').update(data).eq('id', id).select().single()
+}
+export async function getExpiringAmcContracts() {
+  const today = new Date().toISOString().split('T')[0]
+  const in60days = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  return supabase
+    .from('amc_contracts')
+    .select('*, customers(name)')
+    .eq('status', 'active')
+    .lte('end_date', in60days)
+    .gte('end_date', today)
+    .order('end_date')
+}
+
+// Breakdowns
+export async function getBreakdowns() {
+  return supabase
+    .from('breakdowns')
+    .select('*, elevators(unit_number, buildings(name, customers(name)))')
+    .order('reported_date', { ascending: false })
+}
+export async function getBreakdown(id) {
+  return supabase
+    .from('breakdowns')
+    .select('*, elevators(unit_number, buildings(name, customers(name)))')
+    .eq('id', id)
+    .single()
+}
+export async function createBreakdown(data) {
+  return supabase.from('breakdowns').insert(data).select().single()
+}
+export async function updateBreakdown(id, data) {
+  return supabase.from('breakdowns').update(data).eq('id', id).select().single()
+}
+export async function getOpenBreakdowns() {
+  return supabase
+    .from('breakdowns')
+    .select('*, elevators(unit_number, buildings(name, customers(name)))')
+    .in('status', ['open', 'in_progress'])
+    .order('priority')
+}
