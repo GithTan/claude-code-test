@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { getAllMaintenanceSchedules, getJobs, getOverdueMaintenance, getUnpaidInvoices } from '../lib/api'
+import {
+  getAllMaintenanceSchedules, getExpiringAmcContracts, getJobs,
+  getOpenBreakdowns, getOverdueMaintenance, getUnpaidInvoices,
+} from '../lib/api'
 
 function fmt(amount) {
   return `₱${Number(amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
@@ -26,6 +29,8 @@ export default function Dashboard() {
   const [jobs, setJobs] = useState([])
   const [schedules, setSchedules] = useState([])
   const [unpaidInvoices, setUnpaidInvoices] = useState([])
+  const [openBreakdowns, setOpenBreakdowns] = useState([])
+  const [expiringContracts, setExpiringContracts] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -33,6 +38,8 @@ export default function Dashboard() {
       getOverdueMaintenance().then(({ data }) => setOverdue(data || [])),
       getJobs().then(({ data }) => setJobs(data || [])),
       getAllMaintenanceSchedules().then(({ data }) => setSchedules(data || [])),
+      getOpenBreakdowns().then(({ data }) => setOpenBreakdowns(data || [])),
+      getExpiringAmcContracts().then(({ data }) => setExpiringContracts(data || [])),
     ]
     if (isAdmin) {
       fetches.push(getUnpaidInvoices().then(({ data }) => setUnpaidInvoices(data || [])))
@@ -55,7 +62,7 @@ export default function Dashboard() {
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
 
-      <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-3">
         <StatCard
           label="Overdue Maintenance"
           value={overdue.length}
@@ -77,6 +84,20 @@ export default function Dashboard() {
           sublabel="Currently active"
           to="/jobs"
         />
+        <StatCard
+          label="Open Breakdowns"
+          value={openBreakdowns.length}
+          color="border-red-600"
+          sublabel={openBreakdowns.length > 0 ? 'Needs response' : 'None open'}
+          to="/breakdowns"
+        />
+        <StatCard
+          label="Contracts Expiring"
+          value={expiringContracts.length}
+          color="border-orange-400"
+          sublabel="Within 60 days"
+          to="/contracts"
+        />
         {isAdmin && (
           <StatCard
             label="Unpaid Invoices"
@@ -93,6 +114,39 @@ export default function Dashboard() {
           <p className="text-orange-800 font-medium text-sm">
             {dueThisMonth} invoice{dueThisMonth !== 1 ? 's' : ''} due this month
           </p>
+        </div>
+      )}
+
+      {openBreakdowns.length > 0 && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-base font-semibold text-red-600 mb-3">Breakdown Calls</h2>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead>
+              <tr>
+                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Elevator</th>
+                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {openBreakdowns.slice(0, 5).map(b => (
+                <tr key={b.id} className="text-sm">
+                  <td className="py-2 text-gray-900">{b.reported_date}</td>
+                  <td className="py-2 text-gray-600">{b.elevators?.buildings?.customers?.name}</td>
+                  <td className="py-2 font-medium text-gray-900">{b.elevators?.unit_number}</td>
+                  <td className="py-2">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${b.priority === 'high' ? 'bg-red-100 text-red-800' : b.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-700'}`}>
+                      {b.priority}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <Link to="/breakdowns" className="text-blue-600 hover:underline text-sm mt-2 block">
+            View all breakdowns →
+          </Link>
         </div>
       )}
 
@@ -117,11 +171,9 @@ export default function Dashboard() {
               ))}
             </tbody>
           </table>
-          {overdue.length > 5 && (
-            <Link to="/maintenance" className="text-blue-600 hover:underline text-sm mt-2 block">
-              View all {overdue.length} overdue →
-            </Link>
-          )}
+          <Link to="/maintenance" className="text-blue-600 hover:underline text-sm mt-2 block">
+            View all overdue →
+          </Link>
         </div>
       )}
     </div>
