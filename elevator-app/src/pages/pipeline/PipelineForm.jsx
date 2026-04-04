@@ -21,6 +21,8 @@ export default function PipelineForm() {
   const navigate = useNavigate()
   const [form, setForm] = useState({
     project_name: '',
+    contract_amount: '',
+    vat_inclusive: true,
     elevator_type: 'passenger',
     home_elevator_type: '',
     with_structure: null,
@@ -44,6 +46,8 @@ export default function PipelineForm() {
     const { data: project, error: projErr } = await createProject({
       project_name: form.project_name.trim(),
       status: 'active',
+      contract_amount: form.contract_amount ? parseFloat(form.contract_amount) : null,
+      vat_inclusive: form.vat_inclusive,
     })
     if (projErr) { setError(projErr.message); setSaving(false); return }
 
@@ -88,6 +92,35 @@ export default function PipelineForm() {
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             autoFocus
           />
+        </div>
+
+        {/* Contract Amount */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Contract Amount</label>
+          <div className="flex gap-2 items-center">
+            <span className="text-sm text-gray-500">₱</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+              value={form.contract_amount}
+              onChange={e => setForm(f => ({ ...f, contract_amount: e.target.value }))}
+              className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex rounded border border-gray-300 overflow-hidden text-sm">
+              <button type="button"
+                onClick={() => setForm(f => ({ ...f, vat_inclusive: true }))}
+                className={`px-3 py-2 font-medium transition-colors ${form.vat_inclusive ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                VAT Inc.
+              </button>
+              <button type="button"
+                onClick={() => setForm(f => ({ ...f, vat_inclusive: false }))}
+                className={`px-3 py-2 font-medium transition-colors ${!form.vat_inclusive ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                Non-VAT
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Elevator Type */}
