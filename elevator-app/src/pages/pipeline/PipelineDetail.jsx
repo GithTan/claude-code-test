@@ -212,7 +212,7 @@ export default function PipelineDetail() {
   if (!pipeline) return <p className="text-red-500">Pipeline not found.</p>
 
   const steps = [...(pipeline.pipeline_steps || [])].sort((a, b) => a.step_number - b.step_number)
-  const projectLabel = pipeline.installation_projects?.name || '—'
+  const projectLabel = pipeline.installation_projects?.project_name || '—'
   const customerLabel = pipeline.installation_projects?.customers?.name || '—'
 
   async function handleOverride() {

@@ -296,14 +296,14 @@ export const PIPELINE_STAGES = [
 export async function getPipelines() {
   return supabase
     .from('pipelines')
-    .select('*, installation_projects(name, customers(name)), pipeline_steps(*)')
+    .select('id, project_type, supplier, current_step, status')
     .order('created_at', { ascending: false })
 }
 
 export async function getPipeline(id) {
   return supabase
     .from('pipelines')
-    .select('*, installation_projects(name, customers(name)), pipeline_steps(*, pipeline_attachments(*))')
+    .select('*, installation_projects(project_name, customers(name)), pipeline_steps(*, pipeline_attachments(*))')
     .eq('id', id)
     .single()
 }

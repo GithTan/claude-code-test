@@ -22,14 +22,16 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const timeout = setTimeout(() => setLoading(false), 5000)
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      clearTimeout(timeout)
       setUser(session?.user ?? null)
       if (session?.user) {
         loadProfile(session.user.id).finally(() => setLoading(false))
       } else {
         setLoading(false)
       }
-    })
+    }).catch(() => { clearTimeout(timeout); setLoading(false) })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {

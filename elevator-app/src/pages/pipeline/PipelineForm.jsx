@@ -66,7 +66,7 @@ export default function PipelineForm() {
           >
             <option value="">Select a project…</option>
             {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <option key={p.id} value={p.id}>{p.project_name}</option>
             ))}
           </select>
         </div>

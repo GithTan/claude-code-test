@@ -34,7 +34,7 @@ function PipelineCard({ pipeline }) {
     <Link to={`/pipeline/${pipeline.id}`}
       className={`block border rounded-lg p-3 hover:shadow-md transition-shadow ${cardColor(pipeline)}`}>
       <p className="font-semibold text-gray-800 text-sm truncate">
-        {pipeline.installation_projects?.name || '—'}
+        {pipeline.installation_projects?.project_name || '—'}
       </p>
       <p className="text-xs text-gray-500 truncate">
         {pipeline.installation_projects?.customers?.name || '—'}
@@ -61,16 +61,28 @@ export default function PipelineList() {
   const { role } = useAuth()
   const [pipelines, setPipelines] = useState([])
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState(null)
   const [filterType, setFilterType] = useState('all')
 
   useEffect(() => {
-    getPipelines().then(({ data }) => {
+    const timeout = setTimeout(() => {
+      setFetchError('Request timed out. Check your connection.')
+      setLoading(false)
+    }, 8000)
+    getPipelines().then(({ data, error }) => {
+      clearTimeout(timeout)
+      if (error) setFetchError(error.message)
       setPipelines(data || [])
+      setLoading(false)
+    }).catch(err => {
+      clearTimeout(timeout)
+      setFetchError(err.message || 'Unknown error')
       setLoading(false)
     })
   }, [])
 
   if (loading) return <p className="text-gray-500">Loading…</p>
+  if (fetchError) return <p className="text-red-600 p-4">Error: {fetchError}</p>
 
   const active = pipelines.filter(p => p.status !== 'completed')
   const filtered = filterType === 'all' ? active : active.filter(p => p.project_type === filterType)
@@ -115,7 +127,7 @@ export default function PipelineList() {
                 className="flex items-center justify-between bg-white rounded p-3 border border-blue-100 hover:shadow-sm">
                 <div>
                   <p className="text-sm font-medium text-gray-800">
-                    {s.pipeline.installation_projects?.name} — Step {s.step_number}: {STEP_LABELS[s.step_number]}
+                    {s.pipeline.installation_projects?.project_name} — Step {s.step_number}: {STEP_LABELS[s.step_number]}
                   </p>
                   <p className="text-xs text-gray-500">Waiting {daysSince(s.unlocked_at)}d</p>
                 </div>
