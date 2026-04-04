@@ -531,6 +531,7 @@ export default function PipelineDetail() {
               </button>
             </div>
           </div>
+        </div>
       )}
 
       {/* Delete confirmation modal */}
