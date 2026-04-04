@@ -287,7 +287,7 @@ export async function getPipelines() {
 }
 
 export async function getPipeline(id) {
-  return restOne(`/pipelines?select=*,installation_projects(project_name,customers(name)),pipeline_steps(*,pipeline_attachments(*))&id=eq.${id}`)
+  return restOne(`/pipelines?select=*,installation_projects(project_name,contract_amount,vat_inclusive,customers(name)),pipeline_steps(*,pipeline_attachments(*))&id=eq.${id}`)
 }
 
 export async function createPipeline(data) {

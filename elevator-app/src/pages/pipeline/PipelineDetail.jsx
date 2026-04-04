@@ -39,16 +39,13 @@ function StatusBadge({ status, unlockedAt }) {
   return <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">In Progress</span>
 }
 
-function StepCompleteForm({ step, pipeline, onDone, onCancel }) {
-  const { user } = useAuth()
+function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
   const gate = STEP_GATES[step.step_number]
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState(null)
   const [productionEndDate, setProductionEndDate] = useState('')
   const [trackingNumber, setTrackingNumber] = useState('')
   const [shippingDate, setShippingDate] = useState('')
-  const [projectType, setProjectType] = useState(pipeline.project_type)
-  const [supplier, setSupplier] = useState(pipeline.supplier)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
@@ -56,8 +53,7 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel }) {
     setSaving(true)
     setError(null)
 
-    // Validate gate requirements
-    if ((gate === 'file_required') && !file && step.pipeline_attachments?.length === 0) {
+    if (gate === 'file_required' && !file && step.pipeline_attachments?.length === 0) {
       setError('A file attachment is required to complete this step.')
       setSaving(false)
       return
@@ -73,23 +69,18 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel }) {
       return
     }
 
-    // Upload file if provided
     if (file) {
       const { error: fErr } = await uploadPipelineFile(step.id, file)
       if (fErr) { setError(fErr.message); setSaving(false); return }
     }
 
-    // Gather step-specific data
     const data = {}
     if (gate === 'date_entry') data.production_end_date = productionEndDate
     if (gate === 'tracking_entry') { data.tracking_number = trackingNumber; data.shipping_date = shippingDate }
-    if (gate === 'confirm_with_data') { data.project_type = projectType; data.supplier = supplier }
 
-    // Complete the step
     const { error: cErr } = await completeStep(step.id, { notes, data })
     if (cErr) { setError(cErr.message); setSaving(false); return }
 
-    // Unlock next step (if not last)
     const nextNum = step.step_number + 1
     if (nextNum <= PIPELINE_STEPS.length) {
       await unlockNextStep(pipeline.id, nextNum)
@@ -102,25 +93,28 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel }) {
     onDone()
   }
 
+  const proj = pipeline.installation_projects
+
   return (
     <div className="mt-3 p-4 bg-gray-50 rounded border border-gray-200">
+      {/* Step 1: show project summary, no re-entry needed */}
       {gate === 'confirm_with_data' && (
-        <div className="space-y-3 mb-3">
-          <div>
-            <label className="text-xs font-medium text-gray-600">Project Type</label>
-            <select value={projectType} onChange={e => setProjectType(e.target.value)}
-              className="w-full mt-1 border border-gray-300 rounded px-2 py-1 text-sm">
-              <option value="new_installation">New Installation</option>
-              <option value="modernization">Modernization</option>
-              <option value="escalator">Escalator Installation</option>
-              <option value="dismantle_install">Dismantle + Install New</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-600">Supplier</label>
-            <input value={supplier} onChange={e => setSupplier(e.target.value)}
-              className="w-full mt-1 border border-gray-300 rounded px-2 py-1 text-sm" />
-          </div>
+        <div className="mb-4 p-3 bg-white border border-gray-200 rounded text-sm space-y-1">
+          <p className="font-medium text-gray-800">{proj?.project_name}</p>
+          <p className="text-gray-500 capitalize">
+            {[
+              pipeline.elevator_type?.replace(/_/g, ' '),
+              pipeline.home_elevator_type,
+              pipeline.with_structure === true ? 'with structure' : pipeline.with_structure === false ? 'no structure' : null,
+              pipeline.unit_count > 1 ? `${pipeline.unit_count} units` : '1 unit',
+            ].filter(Boolean).join(' · ')}
+          </p>
+          {role === 'admin' && proj?.contract_amount && (
+            <p className="text-gray-600">
+              ₱{Number(proj.contract_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+              <span className="ml-2 text-xs text-gray-400">{proj.vat_inclusive ? 'VAT Inclusive' : 'Non-VAT'}</span>
+            </p>
+          )}
         </div>
       )}
 
@@ -248,6 +242,14 @@ export default function PipelineDetail() {
             pipeline.unit_count > 1 ? `${pipeline.unit_count} units` : null,
           ].filter(Boolean).join(' · ')}
         </p>
+        {role === 'admin' && pipeline.installation_projects?.contract_amount && (
+          <p className="text-sm text-gray-700 mt-1">
+            ₱{Number(pipeline.installation_projects.contract_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+            <span className="ml-2 text-xs text-gray-400">
+              {pipeline.installation_projects.vat_inclusive ? 'VAT Inclusive' : 'Non-VAT'}
+            </span>
+          </p>
+        )}
         <div className="flex items-center gap-3 mt-2">
           <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
             pipeline.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
@@ -318,6 +320,7 @@ export default function PipelineDetail() {
                 <StepCompleteForm
                   step={step}
                   pipeline={pipeline}
+                  role={role}
                   onDone={async () => { setActiveForm(null); await reload() }}
                   onCancel={() => setActiveForm(null)}
                 />
