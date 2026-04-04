@@ -32,10 +32,14 @@ export function AuthProvider({ children }) {
     }).catch(() => { clearTimeout(timeout); setLoading(false) })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setUser(session?.user ?? null)
         _setAuthToken(session?.access_token ?? null)
         if (session?.user) {
+          if (event === 'TOKEN_REFRESHED') {
+            // Token silently refreshed — just update the token, no need to reload profile
+            return
+          }
           await loadProfile(session.user.id)
         } else {
           setRole(null)
