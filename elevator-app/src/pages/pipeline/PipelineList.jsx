@@ -21,47 +21,49 @@ function getStageIndex(currentStep) {
   return PIPELINE_STAGES.findIndex(s => s.steps.includes(currentStep))
 }
 
-function cardColor(pipeline) {
-  const step = pipeline.pipeline_steps?.find(s => s.step_number === pipeline.current_step)
-  if (!step || step.status !== 'unlocked') return 'border-gray-200'
-  const days = daysSince(step.unlocked_at)
-  if (days >= 7) return 'border-red-400 bg-red-50'
-  if (days >= 3) return 'border-yellow-400 bg-yellow-50'
-  return 'border-blue-200 bg-white'
+function urgencyDot(days) {
+  if (days >= 7) return { color: '#8B0000' }
+  if (days >= 3) return { color: '#D4AF37' }
+  return { color: '#4CAF50' }
 }
 
 function PipelineCard({ pipeline }) {
   const step = pipeline.pipeline_steps?.find(s => s.step_number === pipeline.current_step)
   const days = step ? daysSince(step.unlocked_at) : 0
+  const dot = urgencyDot(days)
 
   return (
     <Link to={`/pipeline/${pipeline.id}`}
-      className={`block border rounded-lg p-3 hover:shadow-md transition-shadow ${cardColor(pipeline)}`}>
-      <p className="font-semibold text-gray-800 text-sm truncate">
-        {pipeline.installation_projects?.project_name || '—'}
-      </p>
-      <div className="mt-1 flex flex-wrap gap-1">
+      style={{
+        display: 'block', padding: '12px', marginBottom: 8,
+        backgroundColor: '#FFFFFF', border: '1px solid #D4AF37',
+        textDecoration: 'none',
+      }}
+      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FAFAF0'}
+      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FFFFFF'}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: dot.color, flexShrink: 0 }} />
+        <p style={{ fontWeight: 600, fontSize: 13, color: '#2C2C2C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {pipeline.installation_projects?.project_name || '—'}
+        </p>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
         {pipeline.elevator_type && (
-          <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 capitalize">
+          <span style={{ fontSize: 11, backgroundColor: '#F5F5DC', color: '#2C2C2C', border: '1px solid #E8E0C8', padding: '1px 6px' }}>
             {pipeline.elevator_type.replace(/_/g, ' ')}
           </span>
         )}
-        {pipeline.home_elevator_type && (
-          <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 capitalize">
-            {pipeline.home_elevator_type}
-          </span>
-        )}
         {pipeline.unit_count > 1 && (
-          <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">
+          <span style={{ fontSize: 11, backgroundColor: '#F5F5DC', color: '#2C2C2C', border: '1px solid #E8E0C8', padding: '1px 6px' }}>
             {pipeline.unit_count} units
           </span>
         )}
       </div>
-      <div className="mt-2 text-xs text-gray-700 font-medium">
+      <p style={{ fontSize: 12, color: '#888888' }}>
         Step {pipeline.current_step}: {STEP_LABELS[pipeline.current_step] || 'Complete'}
-      </div>
+      </p>
       {days >= 3 && (
-        <p className={`text-xs mt-1 font-semibold ${days >= 7 ? 'text-red-600' : 'text-yellow-600'}`}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: dot.color, marginTop: 4 }}>
           {days}d waiting
         </p>
       )}
@@ -93,15 +95,13 @@ export default function PipelineList() {
     })
   }, [])
 
-  if (loading) return <p className="text-gray-500">Loading…</p>
-  if (fetchError) return <p className="text-red-600 p-4">Error: {fetchError}</p>
+  if (loading) return <p style={{ color: '#888888' }}>Loading…</p>
+  if (fetchError) return <p style={{ color: '#8B0000', padding: 16 }}>Error: {fetchError}</p>
 
   const active = pipelines.filter(p => p.status !== 'completed')
   const filtered = filterType === 'all' ? active : active.filter(p => p.elevator_type === filterType)
-
   const completed = pipelines.filter(p => p.status === 'completed')
 
-  // "Needs Your Action" — steps unlocked and assigned to current user's role
   const mySteps = active.flatMap(p =>
     (p.pipeline_steps || [])
       .filter(s => s.status === 'unlocked' && (role === 'admin' || STEP_ROLES[s.step_number] === role))
@@ -110,40 +110,45 @@ export default function PipelineList() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Project Pipeline</h1>
+      <div className="flex justify-between items-center mb-1">
+        <h1 className="text-2xl font-bold" style={{ color: '#2C2C2C' }}>New Installations</h1>
         <div className="flex gap-3 items-center">
           <select value={filterType} onChange={e => setFilterType(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            style={{ border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '7px 12px', fontSize: 13 }}>
             <option value="all">All Types</option>
-            {ELEVATOR_TYPES.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
-            ))}
+            {ELEVATOR_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
           {role === 'admin' && (
             <Link to="/pipeline/new"
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
-              New Pipeline
+              style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>
+              + New Pipeline
             </Link>
           )}
         </div>
       </div>
+      <p className="text-sm mb-5" style={{ color: '#888888' }}>
+        Track every new elevator project from client confirmation to turnover — 12 steps, all in one view.
+      </p>
 
       {/* Needs Your Action */}
       {mySteps.length > 0 && (
-        <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h2 className="font-semibold text-blue-800 mb-3">Needs Your Action ({mySteps.length})</h2>
-          <div className="space-y-2">
+        <div style={{ backgroundColor: '#2C2C2C', border: '1px solid #D4AF37', padding: 16, marginBottom: 24 }}>
+          <p style={{ color: '#D4AF37', fontWeight: 700, fontSize: 14, marginBottom: 12 }}>
+            Needs Your Action ({mySteps.length})
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {mySteps.map(s => (
               <Link key={s.id} to={`/pipeline/${s.pipeline.id}`}
-                className="flex items-center justify-between bg-white rounded p-3 border border-blue-100 hover:shadow-sm">
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#3D3D3D', padding: '10px 14px', border: '1px solid #4D4D4D', textDecoration: 'none' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#D4AF37'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = '#4D4D4D'}>
                 <div>
-                  <p className="text-sm font-medium text-gray-800">
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#F5F5DC' }}>
                     {s.pipeline.installation_projects?.project_name} — Step {s.step_number}: {STEP_LABELS[s.step_number]}
                   </p>
-                  <p className="text-xs text-gray-500">Waiting {daysSince(s.unlocked_at)}d</p>
+                  <p style={{ fontSize: 12, color: '#888888' }}>Waiting {daysSince(s.unlocked_at)}d</p>
                 </div>
-                <span className="text-blue-600 text-xs font-medium">Open →</span>
+                <span style={{ color: '#D4AF37', fontSize: 12, fontWeight: 600 }}>Open →</span>
               </Link>
             ))}
           </div>
@@ -151,19 +156,19 @@ export default function PipelineList() {
       )}
 
       {/* Kanban columns */}
-      <div className="grid grid-cols-5 gap-4">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12 }}>
         {PIPELINE_STAGES.map((stage, idx) => {
           const stageProjects = filtered.filter(p => getStageIndex(p.current_step) === idx)
           return (
-            <div key={stage.label} className="min-w-0">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{stage.label}</h3>
-                <span className="text-xs bg-gray-200 text-gray-600 rounded-full px-2">{stageProjects.length}</span>
+            <div key={stage.label}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{stage.label}</p>
+                <span style={{ fontSize: 11, backgroundColor: '#F5F5DC', color: '#2C2C2C', border: '1px solid #D4AF37', padding: '1px 6px', fontWeight: 700 }}>{stageProjects.length}</span>
               </div>
-              <div className="space-y-2">
+              <div>
                 {stageProjects.map(p => <PipelineCard key={p.id} pipeline={p} />)}
                 {stageProjects.length === 0 && (
-                  <p className="text-xs text-gray-400 text-center py-4">Empty</p>
+                  <p style={{ fontSize: 12, color: '#CCCCCC', textAlign: 'center', padding: '16px 0' }}>Empty</p>
                 )}
               </div>
             </div>
@@ -173,16 +178,18 @@ export default function PipelineList() {
 
       {/* Completed */}
       {completed.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-700 mb-3">
+        <div style={{ marginTop: 32 }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C', marginBottom: 12 }}>
             Completed ({completed.length})
-          </h2>
-          <div className="grid grid-cols-3 gap-3">
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
             {completed.map(p => (
               <Link key={p.id} to={`/pipeline/${p.id}`}
-                className="block border border-green-200 bg-green-50 rounded-lg p-3 hover:shadow-sm">
-                <p className="font-semibold text-gray-800 text-sm">{p.installation_projects?.project_name || '—'}</p>
-                <p className="text-xs text-green-700 font-medium mt-1">All {PIPELINE_STEPS.length} steps complete</p>
+                style={{ display: 'block', border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', padding: 12, textDecoration: 'none' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#EDE8CC'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F5F5DC'}>
+                <p style={{ fontWeight: 600, fontSize: 13, color: '#2C2C2C' }}>{p.installation_projects?.project_name || '—'}</p>
+                <p style={{ fontSize: 12, color: '#D4AF37', fontWeight: 600, marginTop: 4 }}>All {PIPELINE_STEPS.length} steps complete ✓</p>
               </Link>
             ))}
           </div>

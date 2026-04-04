@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getAmcContract } from '../../lib/api'
+import { useAuth } from '../../contexts/AuthContext'
 
 function fmt(amount) {
   return `₱${Number(amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
@@ -12,8 +13,19 @@ function daysUntilExpiry(endDate) {
   return Math.ceil((end - today) / (1000 * 60 * 60 * 24))
 }
 
+const FREQ_LABELS = {
+  monthly: 'Monthly',
+  twice_monthly: 'Twice a Month',
+  quarterly: 'Quarterly',
+  by_call: 'By Call',
+}
+
+const labelStyle = { fontSize: 12, color: '#888888', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }
+const valueStyle = { fontSize: 14, color: '#2C2C2C', fontWeight: 500 }
+
 export default function AmcDetail() {
   const { id } = useParams()
+  const { role } = useAuth()
   const [contract, setContract] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -24,49 +36,102 @@ export default function AmcDetail() {
     })
   }, [id])
 
-  if (loading) return <p className="text-gray-500">Loading...</p>
-  if (!contract) return <p className="text-red-500">Contract not found.</p>
+  if (loading) return <p style={{ color: '#888888' }}>Loading…</p>
+  if (!contract) return <p style={{ color: '#8B0000' }}>Contract not found.</p>
 
   const days = daysUntilExpiry(contract.end_date)
   const isExpiringSoon = contract.status === 'active' && days <= 60
 
+  const statusColors = {
+    active: { bg: '#D4AF37', color: '#2C2C2C' },
+    expired: { bg: '#8B0000', color: '#FFFFFF' },
+    cancelled: { bg: '#2C2C2C', color: '#888888' },
+  }
+  const s = statusColors[contract.status] || { bg: '#F5F5DC', color: '#888888' }
+
   return (
-    <div className="max-w-2xl">
-      <div className="flex justify-between items-start mb-6">
+    <div style={{ maxWidth: 600 }}>
+      <Link to="/contracts" style={{ fontSize: 13, color: '#D4AF37', fontWeight: 600 }}>← Maintenance Contracts</Link>
+
+      <div className="flex justify-between items-start mt-3 mb-5">
         <div>
-          <Link to="/contracts" className="text-sm text-blue-600 hover:underline">← Contracts</Link>
-          <h1 className="text-2xl font-bold text-gray-800 mt-1">{contract.contract_number}</h1>
+          <h1 className="text-2xl font-bold" style={{ color: '#2C2C2C' }}>{contract.contract_number}</h1>
+          <p style={{ fontSize: 13, color: '#888888', marginTop: 2 }}>{contract.customers?.name}</p>
         </div>
-        <Link to={`/contracts/${id}/edit`}
-          className="text-sm bg-gray-100 text-gray-700 px-3 py-2 rounded hover:bg-gray-200">
-          Edit
-        </Link>
+        <div className="flex gap-2 items-center">
+          <span style={{ backgroundColor: s.bg, color: s.color, padding: '4px 12px', fontSize: 12, fontWeight: 700 }}>
+            {contract.status?.toUpperCase()}
+          </span>
+          <Link to={`/contracts/${id}/edit`}
+            style={{ border: '1px solid #D4AF37', color: '#2C2C2C', padding: '6px 14px', fontSize: 13, fontWeight: 600 }}>
+            Edit
+          </Link>
+        </div>
       </div>
 
       {isExpiringSoon && (
-        <div className={`rounded-lg p-4 mb-4 ${days <= 30 ? 'bg-red-50 border border-red-200' : 'bg-orange-50 border border-orange-200'}`}>
-          <p className={`font-medium text-sm ${days <= 30 ? 'text-red-800' : 'text-orange-800'}`}>
-            This contract expires in {days} day{days !== 1 ? 's' : ''} — consider renewing
+        <div style={{ backgroundColor: days <= 30 ? '#8B0000' : '#2C2C2C', border: '1px solid #D4AF37', padding: '12px 16px', marginBottom: 20 }}>
+          <p style={{ color: '#D4AF37', fontWeight: 700, fontSize: 14 }}>
+            ⚠ Expiring in {days} day{days !== 1 ? 's' : ''} — consider renewing
           </p>
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6 space-y-3 text-sm">
-        <div className="grid grid-cols-2 gap-4">
-          <div><span className="text-gray-500">Customer</span><p className="font-medium">{contract.customers?.name}</p></div>
-          <div><span className="text-gray-500">Type</span><p className="font-medium capitalize">{contract.contract_type?.replace(/_/g, ' ')}</p></div>
-          <div><span className="text-gray-500">Start Date</span><p className="font-medium">{contract.start_date}</p></div>
-          <div><span className="text-gray-500">End Date</span><p className="font-medium">{contract.end_date}</p></div>
-          <div><span className="text-gray-500">Monthly Fee</span><p className="font-medium">{fmt(contract.monthly_fee)}</p></div>
-          <div><span className="text-gray-500">Status</span><p className="font-medium capitalize">{contract.status}</p></div>
-        </div>
-        {contract.coverage_notes && (
+      {/* Details card */}
+      <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24, marginBottom: 16 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contract Details</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div>
-            <span className="text-gray-500">Coverage Notes</span>
-            <p className="font-medium mt-1">{contract.coverage_notes}</p>
+            <p style={labelStyle}>Start Date</p>
+            <p style={valueStyle}>{contract.start_date}</p>
           </div>
-        )}
+          <div>
+            <p style={labelStyle}>End Date</p>
+            <p style={{ ...valueStyle, color: isExpiringSoon ? '#8B0000' : '#2C2C2C', fontWeight: isExpiringSoon ? 700 : 500 }}>{contract.end_date}</p>
+          </div>
+          {role === 'admin' && (
+            <>
+              <div>
+                <p style={labelStyle}>Monthly Fee</p>
+                <p style={valueStyle}>{fmt(contract.monthly_fee)} {contract.vat_inclusive ? '(VAT Inc.)' : '(Non-VAT)'}</p>
+              </div>
+              <div>
+                <p style={labelStyle}>Billing Frequency</p>
+                <p style={valueStyle}>{FREQ_LABELS[contract.billing_frequency] || contract.billing_frequency || '—'}</p>
+              </div>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Contact */}
+      {(contract.contact_name || contract.contact_number) && (
+        <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24, marginBottom: 16 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contact</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            {contract.contact_name && (
+              <div>
+                <p style={labelStyle}>Contact Person</p>
+                <p style={valueStyle}>{contract.contact_name}</p>
+              </div>
+            )}
+            {contract.contact_number && role === 'admin' && (
+              <div>
+                <p style={labelStyle}>Contact Number</p>
+                <p style={valueStyle}>{contract.contact_number}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Coverage notes */}
+      {contract.coverage_notes && (
+        <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Coverage Notes</p>
+          <p style={{ fontSize: 14, color: '#2C2C2C', lineHeight: 1.6 }}>{contract.coverage_notes}</p>
+        </div>
+      )}
     </div>
   )
 }
