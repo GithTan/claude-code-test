@@ -10,6 +10,7 @@ const navItems = [
   { label: 'Jobs', to: '/jobs' },
   { label: 'Breakdowns', to: '/breakdowns' },
   { label: 'Pipeline', to: '/pipeline' },
+  { label: 'Finance', to: '/finance', adminOnly: true },
   { label: 'Invoices', to: '/invoices', adminOnly: true },
   { label: 'Reports', to: '/reports' },
 ]

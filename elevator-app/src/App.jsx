@@ -31,6 +31,7 @@ import BreakdownForm from './pages/breakdowns/BreakdownForm'
 import PipelineList from './pages/pipeline/PipelineList'
 import PipelineDetail from './pages/pipeline/PipelineDetail'
 import PipelineForm from './pages/pipeline/PipelineForm'
+import FinanceDashboard from './pages/finance/FinanceDashboard'
 
 function ProtectedLayout() {
   return (
@@ -93,6 +94,7 @@ function AppRoutes() {
         <Route path="/projects/:id" element={<PrivateRoute adminOnly><ProjectDetail /></PrivateRoute>} />
         <Route path="/projects/:id/edit" element={<PrivateRoute adminOnly><ProjectForm /></PrivateRoute>} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/finance" element={<PrivateRoute adminOnly><FinanceDashboard /></PrivateRoute>} />
       </Route>
     </Routes>
   )
