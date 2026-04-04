@@ -1,10 +1,7 @@
 // elevator-app/src/pages/pipeline/PipelineForm.jsx
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  getProjects, createPipeline, createPipelineSteps, logActivity,
-  createProject,
-} from '../../lib/api'
+import { createPipeline, createPipelineSteps, logActivity, createProject } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 
 const ELEVATOR_TYPES = [
@@ -14,73 +11,48 @@ const ELEVATOR_TYPES = [
 ]
 
 const HOME_ELEVATOR_TYPES = [
-  { value: 'traction', label: 'Traction Type' },
-  { value: 'hydraulic', label: 'Hydraulic Type' },
-  { value: 'platform', label: 'Platform Type' },
+  { value: 'traction', label: 'Traction' },
+  { value: 'hydraulic', label: 'Hydraulic' },
+  { value: 'platform', label: 'Platform' },
 ]
 
 export default function PipelineForm() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [projects, setProjects] = useState([])
   const [form, setForm] = useState({
-    project_id: '',
+    project_name: '',
     elevator_type: 'passenger',
     home_elevator_type: '',
     with_structure: null,
     unit_count: 1,
-    project_type: 'new_installation',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
-  // Inline new project form
-  const [showNewProject, setShowNewProject] = useState(false)
-  const [newProjectName, setNewProjectName] = useState('')
-  const [savingProject, setSavingProject] = useState(false)
-
-  async function loadProjects() {
-    const { data } = await getProjects()
-    setProjects(data || [])
-  }
-
-  useEffect(() => {
-    loadProjects()
-  }, [])
-
-  async function handleAddProject() {
-    if (!newProjectName.trim()) return
-    setSavingProject(true)
-    const { data, error: pErr } = await createProject({
-      project_name: newProjectName.trim(),
-      status: 'active',
-    })
-    if (pErr) { setSavingProject(false); return }
-    await loadProjects()
-    setForm(f => ({ ...f, project_id: data.id }))
-    setNewProjectName('')
-    setShowNewProject(false)
-    setSavingProject(false)
-  }
+  const isHomeElevator = form.elevator_type === 'home_elevator'
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.project_id) { setError('Please select or create a project.'); return }
-    if (form.elevator_type === 'home_elevator' && !form.home_elevator_type) {
-      setError('Please select a home elevator type.')
-      return
-    }
-    if (form.elevator_type === 'home_elevator' && form.with_structure === null) {
-      setError('Please specify if this includes a structure.')
-      return
-    }
+    if (!form.project_name.trim()) { setError('Please enter a project name.'); return }
+    if (isHomeElevator && !form.home_elevator_type) { setError('Please select a home elevator type.'); return }
+    if (isHomeElevator && form.with_structure === null) { setError('Please select With or No Structure.'); return }
 
     setSaving(true)
+    setError(null)
+
+    // Create the project first
+    const { data: project, error: projErr } = await createProject({
+      project_name: form.project_name.trim(),
+      status: 'active',
+    })
+    if (projErr) { setError(projErr.message); setSaving(false); return }
+
+    // Create the pipeline linked to the new project
     const { data: pipeline, error: pErr } = await createPipeline({
-      project_id: form.project_id,
+      project_id: project.id,
       elevator_type: form.elevator_type,
-      home_elevator_type: form.elevator_type === 'home_elevator' ? form.home_elevator_type : null,
-      with_structure: form.elevator_type === 'home_elevator' ? form.with_structure : null,
+      home_elevator_type: isHomeElevator ? form.home_elevator_type : null,
+      with_structure: isHomeElevator ? form.with_structure : null,
       unit_count: form.unit_count,
       project_type: 'new_installation',
       supplier: '',
@@ -88,9 +60,7 @@ export default function PipelineForm() {
     })
     if (pErr) { setError(pErr.message); setSaving(false); return }
 
-    const { error: sErr } = await createPipelineSteps(pipeline.id)
-    if (sErr) { setError(sErr.message); setSaving(false); return }
-
+    await createPipelineSteps(pipeline.id)
     await logActivity(pipeline.id, null, 'pipeline_created', 'Pipeline created', {
       elevator_type: form.elevator_type,
       unit_count: form.unit_count,
@@ -99,57 +69,25 @@ export default function PipelineForm() {
     navigate(`/pipeline/${pipeline.id}`)
   }
 
-  const isHomeElevator = form.elevator_type === 'home_elevator'
-
   return (
     <div className="max-w-lg mx-auto">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Start New Pipeline</h1>
 
-      {error && <p className="text-red-600 mb-4">{error}</p>}
+      {error && <p className="text-red-600 mb-4 text-sm">{error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-5">
 
-        {/* Installation Project */}
+        {/* Project Name */}
         <div>
-          <div className="flex justify-between items-center mb-1">
-            <label className="block text-sm font-medium text-gray-700">Installation Project</label>
-            <button type="button" onClick={() => setShowNewProject(v => !v)}
-              className="text-xs text-blue-600 hover:underline">
-              + Add New Project
-            </button>
-          </div>
-
-          {showNewProject && (
-            <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-              <p className="text-xs font-medium text-blue-800">New Installation Project</p>
-              <input
-                type="text"
-                placeholder="Project name (e.g. SM Aura Tower Block B)"
-                value={newProjectName}
-                onChange={e => setNewProjectName(e.target.value)}
-                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-              />
-              <div className="flex gap-2">
-                <button type="button" onClick={handleAddProject} disabled={savingProject || !newProjectName.trim()}
-                  className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 disabled:opacity-50">
-                  {savingProject ? 'Saving…' : 'Save Project'}
-                </button>
-                <button type="button" onClick={() => setShowNewProject(false)}
-                  className="text-gray-500 px-3 py-1 rounded text-xs border border-gray-300 hover:bg-gray-50">
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          <select value={form.project_id} onChange={e => setForm(f => ({ ...f, project_id: e.target.value }))}
+          <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+          <input
+            type="text"
+            placeholder="e.g. SM Aura Tower Block B"
+            value={form.project_name}
+            onChange={e => setForm(f => ({ ...f, project_name: e.target.value }))}
             className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            required>
-            <option value="">Select a project…</option>
-            {projects.map(p => (
-              <option key={p.id} value={p.id}>{p.project_name}</option>
-            ))}
-          </select>
+            autoFocus
+          />
         </div>
 
         {/* Elevator Type */}
