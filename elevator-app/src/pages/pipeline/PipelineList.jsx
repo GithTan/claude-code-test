@@ -36,14 +36,22 @@ function PipelineCard({ pipeline }) {
       <p className="font-semibold text-gray-800 text-sm truncate">
         {pipeline.installation_projects?.project_name || '—'}
       </p>
-      <p className="text-xs text-gray-500 truncate">
-        {pipeline.installation_projects?.customers?.name || '—'}
-      </p>
-      <p className="text-xs text-gray-500 mt-1">{pipeline.supplier}</p>
-      <div className="mt-2">
-        <span className="text-xs font-medium text-gray-600">
-          {PROJECT_TYPE_LABELS[pipeline.project_type] || pipeline.project_type}
-        </span>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {pipeline.elevator_type && (
+          <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 capitalize">
+            {pipeline.elevator_type.replace(/_/g, ' ')}
+          </span>
+        )}
+        {pipeline.home_elevator_type && (
+          <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 capitalize">
+            {pipeline.home_elevator_type}
+          </span>
+        )}
+        {pipeline.unit_count > 1 && (
+          <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">
+            {pipeline.unit_count} units
+          </span>
+        )}
       </div>
       <div className="mt-2 text-xs text-gray-700 font-medium">
         Step {pipeline.current_step}: {STEP_LABELS[pipeline.current_step] || 'Complete'}

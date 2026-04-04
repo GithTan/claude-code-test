@@ -240,7 +240,15 @@ export default function PipelineDetail() {
           ← Back to Pipeline
         </button>
         <h1 className="text-2xl font-bold text-gray-800">{projectLabel}</h1>
-        <p className="text-gray-500 text-sm">{customerLabel} · {pipeline.supplier} · {pipeline.project_type.replace(/_/g, ' ')}</p>
+        <p className="text-gray-500 text-sm">
+          {[
+            customerLabel !== '—' ? customerLabel : null,
+            pipeline.elevator_type?.replace(/_/g, ' '),
+            pipeline.home_elevator_type,
+            pipeline.with_structure === true ? 'with structure' : pipeline.with_structure === false ? 'no structure' : null,
+            pipeline.unit_count > 1 ? `${pipeline.unit_count} units` : null,
+          ].filter(Boolean).join(' · ')}
+        </p>
         <div className="flex items-center gap-3 mt-2">
           <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
             pipeline.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
