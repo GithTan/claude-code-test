@@ -4,7 +4,10 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   getAllMaintenanceSchedules, getExpiringAmcContracts, getJobs,
   getOpenBreakdowns, getOverdueMaintenance, getUnpaidInvoices,
+  getPipelines, PIPELINE_STEPS,
 } from '../lib/api'
+
+const STEP_LABELS = Object.fromEntries(PIPELINE_STEPS.map(s => [s.number, s.label]))
 
 function fmt(amount) {
   return `₱${Number(amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
@@ -31,6 +34,8 @@ export default function Dashboard() {
   const [unpaidInvoices, setUnpaidInvoices] = useState([])
   const [openBreakdowns, setOpenBreakdowns] = useState([])
   const [expiringContracts, setExpiringContracts] = useState([])
+  const [pipelines, setPipelines] = useState([])
+  const [showPipelines, setShowPipelines] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -40,6 +45,7 @@ export default function Dashboard() {
       getAllMaintenanceSchedules().then(({ data }) => setSchedules(data || [])),
       getOpenBreakdowns().then(({ data }) => setOpenBreakdowns(data || [])),
       getExpiringAmcContracts().then(({ data }) => setExpiringContracts(data || [])),
+      getPipelines().then(({ data }) => setPipelines((data || []).filter(p => p.status !== 'completed'))),
     ]
     if (isAdmin) {
       fetches.push(getUnpaidInvoices().then(({ data }) => setUnpaidInvoices(data || [])))
@@ -62,7 +68,15 @@ export default function Dashboard() {
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
 
-      <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 mb-4 lg:grid-cols-3">
+        {/* Pipeline Overview — clickable, expands inline */}
+        <button onClick={() => setShowPipelines(v => !v)}
+          className="text-left bg-white rounded-lg shadow p-6 border-l-4 border-blue-700 hover:shadow-md transition-shadow">
+          <p className="text-3xl font-bold text-gray-800">{pipelines.length}</p>
+          <p className="text-sm font-medium text-gray-700 mt-1">Pipeline Overview</p>
+          <p className="text-xs text-blue-600 mt-1">{showPipelines ? 'Hide projects ▲' : 'View all projects ▼'}</p>
+        </button>
+
         <StatCard
           label="Overdue Maintenance"
           value={overdue.length}
@@ -108,6 +122,63 @@ export default function Dashboard() {
           />
         )}
       </div>
+
+      {/* Pipeline Overview Panel */}
+      {showPipelines && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-base font-semibold text-gray-800">Active Projects</h2>
+            <Link to="/pipeline" className="text-xs text-blue-600 hover:underline">Manage in Pipeline →</Link>
+          </div>
+          {pipelines.length === 0 ? (
+            <p className="text-sm text-gray-400">No active projects.</p>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {pipelines.map(p => {
+                const currentStep = p.pipeline_steps?.find(s => s.step_number === p.current_step)
+                const days = currentStep?.unlocked_at
+                  ? Math.floor((Date.now() - new Date(currentStep.unlocked_at)) / 86400000)
+                  : 0
+                const isOverdue = days >= 7
+                const isWaiting = days >= 3
+
+                return (
+                  <Link key={p.id} to={`/pipeline/${p.id}`}
+                    className="flex items-center justify-between py-3 hover:bg-gray-50 px-2 -mx-2 rounded transition-colors">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">
+                        {p.installation_projects?.project_name || '—'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5 capitalize">
+                        {[
+                          p.elevator_type?.replace(/_/g, ' '),
+                          p.unit_count > 1 ? `${p.unit_count} units` : null,
+                        ].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-semibold text-gray-700">
+                        Step {p.current_step} of {PIPELINE_STEPS.length}
+                      </p>
+                      <p className="text-xs text-gray-500">{STEP_LABELS[p.current_step] || 'Complete'}</p>
+                      {days >= 3 && (
+                        <p className={`text-xs font-semibold mt-0.5 ${isOverdue ? 'text-red-600' : 'text-yellow-600'}`}>
+                          {days}d waiting
+                        </p>
+                      )}
+                    </div>
+                    <div className="ml-4">
+                      <span className={`inline-block w-2.5 h-2.5 rounded-full ${
+                        isOverdue ? 'bg-red-500' : isWaiting ? 'bg-yellow-400' : 'bg-green-400'
+                      }`} />
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {isAdmin && dueThisMonth > 0 && (
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
