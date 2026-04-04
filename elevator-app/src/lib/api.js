@@ -256,7 +256,7 @@ export const PIPELINE_STEPS = [
   { number: 1,  label: 'Project Awarded',         gate: 'confirm_with_data',     role: 'admin' },
   { number: 2,  label: 'Shop Drawings Prepared',  gate: 'file_required',         role: 'admin' },
   { number: 3,  label: 'Client Signs Drawings',   gate: 'file_required',         role: 'admin' },
-  { number: 4,  label: 'Supplier Approval',       gate: 'file_required',         role: 'coordinator' },
+  { number: 4,  label: 'Engineer Approval',        gate: 'file_required',         role: 'coordinator' },
   { number: 5,  label: 'Payment to Supplier',     gate: 'file_required',         role: 'coordinator' },
   { number: 6,  label: 'Production Started',      gate: 'date_entry',            role: 'coordinator' },
   { number: 7,  label: 'Production Monitoring',   gate: 'checkpoint',            role: 'coordinator' },
