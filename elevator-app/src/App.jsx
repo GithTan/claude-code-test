@@ -32,6 +32,7 @@ import PipelineList from './pages/pipeline/PipelineList'
 import PipelineDetail from './pages/pipeline/PipelineDetail'
 import PipelineForm from './pages/pipeline/PipelineForm'
 import FinanceDashboard from './pages/finance/FinanceDashboard'
+import StartHere from './pages/StartHere'
 
 function ProtectedLayout() {
   return (
@@ -59,6 +60,7 @@ function AppRoutes() {
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
       <Route element={<ProtectedLayout />}>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/start" element={<StartHere />} />
         <Route path="/customers" element={<CustomerList />} />
         <Route path="/customers/new" element={<CustomerForm />} />
         <Route path="/customers/:id" element={<CustomerDetail />} />

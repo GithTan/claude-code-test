@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 const navItems = [
+  { label: 'Start Here', to: '/start' },
   { label: 'Dashboard', to: '/' },
   { label: 'Customers', to: '/customers' },
   { label: 'Elevators', to: '/elevators' },
