@@ -1,3 +1,37 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Tahoma', 'Geneva', Verdana, sans-serif;
+    background-color: #F5F5F5;
+    color: #2C2C2C;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Tahoma', 'Geneva', Verdana, sans-serif;
+    color: #2C2C2C;
+  }
+}
+
+@layer utilities {
+  .font-brand {
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+  .text-gold {
+    color: #D4AF37;
+  }
+  .bg-gold {
+    background-color: #D4AF37;
+  }
+  .bg-beige {
+    background-color: #F5F5DC;
+  }
+  .border-gold {
+    border-color: #D4AF37;
+  }
+  .hover\:bg-gold-dark:hover {
+    background-color: #B8962E;
+  }
+}

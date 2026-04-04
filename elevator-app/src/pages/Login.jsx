@@ -20,14 +20,17 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Elevator Management</h1>
-        <p className="text-gray-500 mb-6">Sign in to your account</p>
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F5F5F5' }}>
+      <div className="w-full max-w-md p-8 shadow-md" style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37' }}>
+        {/* Brand */}
+        <div className="mb-6 text-center">
+          <h1 className="font-brand text-3xl font-bold" style={{ color: '#2C2C2C' }}>FIEC Elevator</h1>
+          <p className="text-sm mt-1" style={{ color: '#888888' }}>Sign in to your account</p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" className="block text-sm font-medium mb-1" style={{ color: '#2C2C2C' }}>
               Email
             </label>
             <input
@@ -36,12 +39,13 @@ export default function Login() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm focus:outline-none"
+              style={{ border: '1px solid #D4AF37', backgroundColor: '#FFFFFF', color: '#2C2C2C' }}
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium mb-1" style={{ color: '#2C2C2C' }}>
               Password
             </label>
             <input
@@ -50,22 +54,30 @@ export default function Login() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm focus:outline-none"
+              style={{ border: '1px solid #D4AF37', backgroundColor: '#FFFFFF', color: '#2C2C2C' }}
             />
           </div>
 
           {error && (
-            <p className="text-red-600 text-sm">{error}</p>
+            <p className="text-sm" style={{ color: '#2C2C2C', backgroundColor: '#E8E8E8', padding: '8px', border: '1px solid #AAAAAA' }}>
+              {error}
+            </p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+            className="w-full py-2 text-sm font-semibold transition-opacity disabled:opacity-50"
+            style={{ backgroundColor: '#D4AF37', color: '#2C2C2C' }}
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+
+        <div className="flex justify-end mt-6">
+          <span className="font-brand text-xs" style={{ color: '#D4AF37', opacity: 0.4 }}>RC77558</span>
+        </div>
       </div>
     </div>
   )

@@ -13,12 +13,13 @@ function fmt(amount) {
   return `₱${Number(amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
 }
 
-function StatCard({ label, value, sublabel, color, to }) {
+function StatCard({ label, value, sublabel, highlight, to }) {
   const content = (
-    <div className={`bg-white rounded-lg shadow p-6 border-l-4 ${color}`}>
-      <p className="text-3xl font-bold text-gray-800">{value}</p>
-      <p className="text-sm font-medium text-gray-700 mt-1">{label}</p>
-      {sublabel && <p className="text-xs text-gray-500 mt-1">{sublabel}</p>}
+    <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37' }}
+      className="shadow-sm p-6 hover:shadow-md transition-shadow">
+      <p className="text-3xl font-bold" style={{ color: highlight ? '#D4AF37' : '#2C2C2C' }}>{value}</p>
+      <p className="text-sm font-medium mt-1" style={{ color: '#2C2C2C' }}>{label}</p>
+      {sublabel && <p className="text-xs mt-1" style={{ color: '#888888' }}>{sublabel}</p>}
     </div>
   )
   return to ? <Link to={to}>{content}</Link> : content
@@ -71,64 +72,38 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-4 mb-4 lg:grid-cols-3">
         {/* Pipeline Overview — clickable, expands inline */}
         <button onClick={() => setShowPipelines(v => !v)}
-          className="text-left bg-white rounded-lg shadow p-6 border-l-4 border-blue-700 hover:shadow-md transition-shadow">
-          <p className="text-3xl font-bold text-gray-800">{pipelines.length}</p>
-          <p className="text-sm font-medium text-gray-700 mt-1">Pipeline Overview</p>
-          <p className="text-xs text-blue-600 mt-1">{showPipelines ? 'Hide projects ▲' : 'View all projects ▼'}</p>
+          className="text-left shadow-sm p-6 hover:shadow-md transition-shadow"
+          style={{ backgroundColor: '#2C2C2C', border: '1px solid #D4AF37' }}>
+          <p className="text-3xl font-bold" style={{ color: '#D4AF37' }}>{pipelines.length}</p>
+          <p className="text-sm font-medium mt-1" style={{ color: '#F5F5DC' }}>Pipeline Overview</p>
+          <p className="text-xs mt-1" style={{ color: '#D4AF37' }}>
+            {showPipelines ? 'Hide projects ↑' : 'View all projects →'}
+          </p>
         </button>
 
-        <StatCard
-          label="Overdue Maintenance"
-          value={overdue.length}
-          color="border-red-500"
-          sublabel={overdue.length > 0 ? 'Needs attention' : 'All up to date'}
-          to="/maintenance"
-        />
-        <StatCard
-          label="Upcoming This Week"
-          value={upcomingThisWeek}
-          color="border-blue-500"
-          sublabel="Scheduled visits"
-          to="/maintenance"
-        />
-        <StatCard
-          label="Jobs In Progress"
-          value={inProgressToday}
-          color="border-yellow-500"
-          sublabel="Currently active"
-          to="/jobs"
-        />
-        <StatCard
-          label="Open Breakdowns"
-          value={openBreakdowns.length}
-          color="border-red-600"
-          sublabel={openBreakdowns.length > 0 ? 'Needs response' : 'None open'}
-          to="/breakdowns"
-        />
-        <StatCard
-          label="Contracts Expiring"
-          value={expiringContracts.length}
-          color="border-orange-400"
-          sublabel="Within 60 days"
-          to="/contracts"
-        />
+        <StatCard label="Overdue Maintenance" value={overdue.length}
+          sublabel={overdue.length > 0 ? 'Needs attention' : 'All up to date'} to="/maintenance" />
+        <StatCard label="Upcoming This Week" value={upcomingThisWeek}
+          sublabel="Scheduled visits" to="/maintenance" />
+        <StatCard label="Jobs In Progress" value={inProgressToday}
+          sublabel="Currently active" to="/jobs" />
+        <StatCard label="Open Breakdowns" value={openBreakdowns.length}
+          sublabel={openBreakdowns.length > 0 ? 'Needs response' : 'None open'} to="/breakdowns" />
+        <StatCard label="Contracts Expiring" value={expiringContracts.length}
+          sublabel="Within 60 days" to="/contracts" />
         {isAdmin && (
-          <StatCard
-            label="Unpaid Invoices"
-            value={fmt(unpaidTotal)}
-            color="border-orange-500"
+          <StatCard label="Unpaid Invoices" value={fmt(unpaidTotal)} highlight={unpaidTotal > 0}
             sublabel={`${unpaidInvoices.length} invoice${unpaidInvoices.length !== 1 ? 's' : ''}`}
-            to="/invoices"
-          />
+            to="/invoices" />
         )}
       </div>
 
       {/* Pipeline Overview Panel */}
       {showPipelines && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <div className="shadow-sm p-6 mb-6" style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37' }}>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-base font-semibold text-gray-800">Active Projects</h2>
-            <Link to="/pipeline" className="text-xs text-blue-600 hover:underline">Manage in Pipeline →</Link>
+            <h2 className="text-base font-semibold" style={{ color: '#2C2C2C' }}>Active Projects</h2>
+            <Link to="/pipeline" className="text-xs hover:underline" style={{ color: '#D4AF37' }}>Manage in Pipeline →</Link>
           </div>
           {pipelines.length === 0 ? (
             <p className="text-sm text-gray-400">No active projects.</p>
@@ -181,16 +156,16 @@ export default function Dashboard() {
       )}
 
       {isAdmin && dueThisMonth > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
-          <p className="text-orange-800 font-medium text-sm">
+        <div className="p-4 mb-6" style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37' }}>
+          <p className="font-medium text-sm" style={{ color: '#2C2C2C' }}>
             {dueThisMonth} invoice{dueThisMonth !== 1 ? 's' : ''} due this month
           </p>
         </div>
       )}
 
       {openBreakdowns.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-base font-semibold text-red-600 mb-3">Breakdown Calls</h2>
+        <div className="shadow-sm p-6 mb-6" style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37' }}>
+          <h2 className="text-base font-semibold mb-3" style={{ color: '#2C2C2C' }}>Breakdown Calls</h2>
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
@@ -222,8 +197,8 @@ export default function Dashboard() {
       )}
 
       {overdue.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-base font-semibold text-red-600 mb-3">Overdue Maintenance</h2>
+        <div className="shadow-sm p-6 mb-6" style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37' }}>
+          <h2 className="text-base font-semibold mb-3" style={{ color: '#2C2C2C' }}>Overdue Maintenance</h2>
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
