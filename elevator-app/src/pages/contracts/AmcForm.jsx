@@ -86,11 +86,11 @@ export default function AmcForm() {
 
       <form onSubmit={handleSubmit} style={cardStyle} className="space-y-4">
 
-        {/* Contract Name */}
+        {/* Project Name */}
         <div>
-          <label style={labelStyle}>Contract Name *</label>
+          <label style={labelStyle}>Project Name *</label>
           <input name="contract_number" value={form.contract_number} onChange={handleChange} required
-            placeholder="e.g. SM Aura Tower — Annual Maintenance"
+            placeholder="e.g. SM Aura Tower"
             style={inputStyle} />
         </div>
 
@@ -129,16 +129,6 @@ export default function AmcForm() {
               placeholder="e.g. 09171234567"
               style={inputStyle} />
           </div>
-        </div>
-
-        {/* Contract Type */}
-        <div>
-          <label style={labelStyle}>Contract Type</label>
-          <select name="contract_type" value={form.contract_type} onChange={handleChange} style={inputStyle}>
-            <option value="comprehensive">Comprehensive</option>
-            <option value="non_comprehensive">Non-Comprehensive</option>
-            <option value="call_based">Call-Based</option>
-          </select>
         </div>
 
         {/* Dates */}
