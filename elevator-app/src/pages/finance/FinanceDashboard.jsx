@@ -158,7 +158,7 @@ export default function FinanceDashboard() {
           <p className="text-2xl font-bold" style={{ color: '#2C2C2C' }}>
             {amcDueThisMonth.length}
           </p>
-          <p className="text-sm mt-1" style={{ color: '#2C2C2C' }}>AMC Billing Due</p>
+          <p className="text-sm mt-1" style={{ color: '#2C2C2C' }}>Maintenance Billing Due</p>
           <p className="text-xs mt-0.5" style={{ color: '#888888' }}>Contracts to bill</p>
         </div>
       </div>
@@ -200,11 +200,11 @@ export default function FinanceDashboard() {
         )}
       </div>
 
-      {/* Section 2: AMC Billing Due This Month */}
+      {/* Section 2: Maintenance Billing Due This Month */}
       <div className="p-5 shadow-sm mb-6" style={cardStyle}>
-        <SectionHeader title="AMC Contracts — Bill This Month" count={amcDueThisMonth.length} />
+        <SectionHeader title="Maintenance Contracts — Bill This Month" count={amcDueThisMonth.length} />
         {amcDueThisMonth.length === 0 ? (
-          <EmptyRow message="All AMC contracts billed for this month." />
+          <EmptyRow message="All maintenance contracts billed for this month." />
         ) : (
           <div className="divide-y" style={dividerStyle}>
             {amcDueThisMonth.map(c => (
@@ -222,11 +222,11 @@ export default function FinanceDashboard() {
                     View Contract →
                   </Link>
                   <button
-                    onClick={() => quickCreateInvoice(c.customer_id, `AMC fee — ${c.customers?.name}`, c.monthly_rate)}
+                    onClick={() => quickCreateInvoice(c.customer_id, `Maintenance fee — ${c.customers?.name}`, c.monthly_rate)}
                     disabled={creatingInvoice !== null}
                     className="text-xs px-3 py-1.5 font-medium disabled:opacity-50"
                     style={{ backgroundColor: '#D4AF37', color: '#2C2C2C' }}>
-                    {creatingInvoice === `AMC fee — ${c.customers?.name}` ? 'Creating…' : 'Create Invoice'}
+                    {creatingInvoice === `Maintenance fee — ${c.customers?.name}` ? 'Creating…' : 'Create Invoice'}
                   </button>
                 </div>
               </div>
