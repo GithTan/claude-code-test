@@ -58,7 +58,7 @@ function PipelineCard({ pipeline }) {
 }
 
 export default function PipelineList() {
-  const { role, user } = useAuth()
+  const { role } = useAuth()
   const [pipelines, setPipelines] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterType, setFilterType] = useState('all')
@@ -75,8 +75,10 @@ export default function PipelineList() {
   const active = pipelines.filter(p => p.status !== 'completed')
   const filtered = filterType === 'all' ? active : active.filter(p => p.project_type === filterType)
 
+  const completed = pipelines.filter(p => p.status === 'completed')
+
   // "Needs Your Action" — steps unlocked and assigned to current user's role
-  const mySteps = pipelines.flatMap(p =>
+  const mySteps = active.flatMap(p =>
     (p.pipeline_steps || [])
       .filter(s => s.status === 'unlocked' && (role === 'admin' || STEP_ROLES[s.step_number] === role))
       .map(s => ({ ...s, pipeline: p }))
@@ -146,13 +148,13 @@ export default function PipelineList() {
       </div>
 
       {/* Completed */}
-      {pipelines.filter(p => p.status === 'completed').length > 0 && (
+      {completed.length > 0 && (
         <div className="mt-8">
           <h2 className="text-lg font-semibold text-gray-700 mb-3">
-            Completed ({pipelines.filter(p => p.status === 'completed').length})
+            Completed ({completed.length})
           </h2>
           <div className="grid grid-cols-3 gap-3">
-            {pipelines.filter(p => p.status === 'completed').map(p => (
+            {completed.map(p => (
               <Link key={p.id} to={`/pipeline/${p.id}`}
                 className="block border border-green-200 bg-green-50 rounded-lg p-3 hover:shadow-sm">
                 <p className="font-semibold text-gray-800 text-sm">{p.installation_projects?.name}</p>
