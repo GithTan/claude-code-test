@@ -81,6 +81,7 @@ export default function CustomerDetail() {
                 <th style={thStyle}>Building Name</th>
                 <th style={thStyle}>Address</th>
                 <th style={thStyle}>Floors</th>
+                <th style={thStyle}>Capacity</th>
                 <th style={thStyle}></th>
               </tr>
             </thead>
@@ -92,6 +93,7 @@ export default function CustomerDetail() {
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{b.name}</td>
                   <td style={tdStyle}>{b.address || '—'}</td>
                   <td style={tdStyle}>{b.floors || '—'}</td>
+                  <td style={tdStyle}>{b.capacity || '—'}</td>
                   <td style={{ ...tdStyle, textAlign: 'right' }}>
                     <Link to={`/buildings/${b.id}/elevators`} style={{ color: '#D4AF37', fontSize: 13, fontWeight: 600 }}>
                       View Elevators →
