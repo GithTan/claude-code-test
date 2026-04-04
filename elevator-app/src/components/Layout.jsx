@@ -57,15 +57,28 @@ export default function Layout({ children }) {
 
         {/* Footer */}
         <div className="p-4" style={{ borderTop: '1px solid #3D3D3D' }}>
-          <p className="text-xs truncate mb-2" style={{ color: '#888888' }}>{user?.email}</p>
-          <button onClick={signOut} className="text-xs transition-colors" style={{ color: '#888888' }}
-            onMouseEnter={e => e.target.style.color = '#D4AF37'}
-            onMouseLeave={e => e.target.style.color = '#888888'}>
-            Sign out
-          </button>
-          {/* Luck seal — right aligned */}
-          <div className="flex justify-end mt-3">
-            <span className="font-brand text-xs" style={{ color: '#D4AF37', opacity: 0.5 }}>RC77558</span>
+          <p className="text-xs truncate mb-3" style={{ color: '#888888' }}>{user?.email}</p>
+
+          {/* Luck seal + Sign out — right aligned */}
+          <div className="flex items-center justify-end gap-2 mb-2">
+            {/* Square+dot symbol */}
+            <div style={{
+              width: 18, height: 18, border: '1.5px solid #D4AF37',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: '#D4AF37' }} />
+            </div>
+            <span className="font-brand text-xs" style={{ color: '#D4AF37', opacity: 0.7, letterSpacing: '0.05em' }}>
+              RC 77558
+            </span>
+          </div>
+
+          <div className="flex justify-end">
+            <button onClick={signOut} className="text-xs transition-colors" style={{ color: '#888888' }}
+              onMouseEnter={e => e.target.style.color = '#D4AF37'}
+              onMouseLeave={e => e.target.style.color = '#888888'}>
+              Sign out
+            </button>
           </div>
         </div>
       </aside>

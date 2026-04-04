@@ -19,7 +19,7 @@ function StatCard({ label, value, sublabel, highlight, to }) {
       className="shadow-sm p-6 hover:shadow-md transition-shadow">
       <p className="text-3xl font-bold" style={{ color: highlight ? '#D4AF37' : '#2C2C2C' }}>{value}</p>
       <p className="text-sm font-medium mt-1" style={{ color: '#2C2C2C' }}>{label}</p>
-      {sublabel && <p className="text-xs mt-1" style={{ color: '#888888' }}>{sublabel}</p>}
+      {sublabel && <p className="text-xs mt-1" style={{ color: '#2C2C2C' }}>{sublabel}</p>}
     </div>
   )
   return to ? <Link to={to}>{content}</Link> : content
@@ -74,10 +74,10 @@ export default function Dashboard() {
         <button onClick={() => setShowPipelines(v => !v)}
           className="text-left shadow-sm p-6 hover:shadow-md transition-shadow"
           style={{ backgroundColor: '#2C2C2C', border: '1px solid #D4AF37' }}>
-          <p className="text-3xl font-bold" style={{ color: '#D4AF37' }}>{pipelines.length}</p>
+          <p className="text-3xl font-bold" style={{ color: '#F5F5DC' }}>{pipelines.length}</p>
           <p className="text-sm font-medium mt-1" style={{ color: '#F5F5DC' }}>Pipeline Overview</p>
-          <p className="text-xs mt-1" style={{ color: '#D4AF37' }}>
-            {showPipelines ? 'Hide projects ↑' : 'View all projects →'}
+          <p className="text-xs mt-1">
+            <span style={{ color: '#D4AF37' }}>{showPipelines ? 'Hide projects ↑' : 'View all projects →'}</span>
           </p>
         </button>
 
