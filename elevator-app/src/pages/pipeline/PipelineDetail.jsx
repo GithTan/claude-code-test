@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   getPipeline, completeStep, unlockNextStep, updatePipelineCurrentStep,
   overrideGate, uploadPipelineFile, getPipelineFileUrl, logActivity, getPipelineActivity,
-  PIPELINE_STEPS, deletePipeline,
+  PIPELINE_STEPS, deletePipeline, resetPipelineToStep,
 } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -39,24 +39,65 @@ function StatusBadge({ status, unlockedAt }) {
   return <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">In Progress</span>
 }
 
+async function openFile(attachment) {
+  const { data, error } = await getPipelineFileUrl(attachment.file_path)
+  if (error || !data?.signedUrl) { alert('Could not get download link.'); return }
+  window.open(data.signedUrl, '_blank')
+}
+
 function FileList({ attachments }) {
   if (!attachments?.length) return null
-
-  async function download(attachment) {
-    const { data, error } = await getPipelineFileUrl(attachment.file_path)
-    if (error || !data?.signedUrl) { alert('Could not get download link.'); return }
-    window.open(data.signedUrl, '_blank')
-  }
+  const sorted = [...attachments].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
   return (
     <div className="mt-2 flex flex-wrap gap-2">
-      {attachments.map(a => (
-        <button key={a.id} onClick={() => download(a)}
-          className="flex items-center gap-1.5 text-xs bg-white border border-gray-300 rounded px-2 py-1 hover:bg-blue-50 hover:border-blue-400 text-blue-700 transition-colors">
+      {sorted.map((a, i) => (
+        <button key={a.id} onClick={() => openFile(a)}
+          className={`flex items-center gap-1.5 text-xs rounded px-2 py-1 border transition-colors ${
+            i === 0
+              ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
+              : 'bg-white text-blue-700 border-gray-300 hover:bg-blue-50 hover:border-blue-400'
+          }`}>
           <span>📎</span>
           <span className="max-w-[160px] truncate">{a.file_name}</span>
+          {i === 0 && <span className="ml-1 text-xs opacity-80">Latest</span>}
         </button>
       ))}
+    </div>
+  )
+}
+
+function UploadRevisionForm({ step, pipelineId, onDone, onCancel }) {
+  const [file, setFile] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function handleUpload() {
+    if (!file) { setError('Please choose a file.'); return }
+    setSaving(true)
+    const { error: fErr } = await uploadPipelineFile(step.id, file)
+    if (fErr) { setError(fErr.message); setSaving(false); return }
+    await resetPipelineToStep(pipelineId, 2)
+    await logActivity(pipelineId, step.id, 'drawing_revised', `Revision uploaded: ${file.name}`, {})
+    onDone()
+  }
+
+  return (
+    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+      <p className="text-xs font-semibold text-yellow-800 mb-2">Upload Drawing Revision</p>
+      <p className="text-xs text-yellow-700 mb-3">Uploading a new revision will reset the process back to Step 2 and lock steps 3 onwards.</p>
+      <input type="file" onChange={e => setFile(e.target.files[0])} className="text-sm mb-2 w-full" />
+      {error && <p className="text-red-600 text-xs mb-2">{error}</p>}
+      <div className="flex gap-2">
+        <button onClick={handleUpload} disabled={saving || !file}
+          className="bg-yellow-600 text-white px-3 py-1 rounded text-xs hover:bg-yellow-700 disabled:opacity-50">
+          {saving ? 'Uploading…' : 'Upload & Reset to Step 2'}
+        </button>
+        <button onClick={onCancel}
+          className="text-gray-500 px-3 py-1 rounded text-xs border border-gray-300 hover:bg-gray-50">
+          Cancel
+        </button>
+      </div>
     </div>
   )
 }
@@ -204,6 +245,7 @@ export default function PipelineDetail() {
   const [activity, setActivity] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeForm, setActiveForm] = useState(null)
+  const [showRevision, setShowRevision] = useState(false)
   const [overrideStep, setOverrideStep] = useState(null)
   const [overrideReason, setOverrideReason] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -319,11 +361,28 @@ export default function PipelineDetail() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* Step 3: always-visible download button if files exist */}
+                  {step.step_number === 3 && step.pipeline_attachments?.length > 0 && (
+                    <button onClick={() => {
+                      const sorted = [...step.pipeline_attachments].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                      openFile(sorted[0])
+                    }}
+                      className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">
+                      Download Drawing
+                    </button>
+                  )}
                   <StatusBadge status={step.status} unlockedAt={step.unlocked_at} />
                   {canComplete && !isOpen && (
                     <button onClick={() => setActiveForm(step.step_number)}
                       className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700">
                       Complete
+                    </button>
+                  )}
+                  {/* Step 2: upload revision button when completed */}
+                  {step.step_number === 2 && step.status === 'completed' && !showRevision && (
+                    <button onClick={() => setShowRevision(true)}
+                      className="text-xs text-yellow-700 border border-yellow-400 px-2 py-1 rounded hover:bg-yellow-50">
+                      Upload Revision
                     </button>
                   )}
                   {role === 'admin' && step.status === 'locked' && (
@@ -334,6 +393,15 @@ export default function PipelineDetail() {
                   )}
                 </div>
               </div>
+
+              {step.step_number === 2 && showRevision && (
+                <UploadRevisionForm
+                  step={step}
+                  pipelineId={pipeline.id}
+                  onDone={async () => { setShowRevision(false); await reload() }}
+                  onCancel={() => setShowRevision(false)}
+                />
+              )}
 
               {isOpen && (
                 <StepCompleteForm

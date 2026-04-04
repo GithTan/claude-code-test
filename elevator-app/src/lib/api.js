@@ -362,3 +362,21 @@ export async function getPipelineFileUrl(filePath) {
 export async function deletePipeline(id) {
   return rest(`/pipelines?id=eq.${id}`, { method: 'DELETE', headers: { Prefer: '' } })
 }
+
+export async function resetPipelineToStep(pipelineId, stepNumber) {
+  // Lock all steps after stepNumber and clear their completion data
+  await rest(
+    `/pipeline_steps?pipeline_id=eq.${pipelineId}&step_number=gt.${stepNumber}`,
+    { method: 'PATCH', body: JSON.stringify({ status: 'locked', unlocked_at: null, completed_at: null, notes: null }) }
+  )
+  // Reset the target step to unlocked
+  await rest(
+    `/pipeline_steps?pipeline_id=eq.${pipelineId}&step_number=eq.${stepNumber}`,
+    { method: 'PATCH', body: JSON.stringify({ status: 'unlocked', unlocked_at: new Date().toISOString(), completed_at: null, notes: null }) }
+  )
+  // Update pipeline current step
+  return rest(`/pipelines?id=eq.${pipelineId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ current_step: stepNumber, status: 'active', updated_at: new Date().toISOString() }),
+  })
+}
