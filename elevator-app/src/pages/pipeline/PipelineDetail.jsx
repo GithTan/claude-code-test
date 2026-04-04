@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   getPipeline, completeStep, unlockNextStep, updatePipelineCurrentStep,
-  overrideGate, uploadPipelineFile, logActivity, getPipelineActivity,
+  overrideGate, uploadPipelineFile, getPipelineFileUrl, logActivity, getPipelineActivity,
   PIPELINE_STEPS, deletePipeline,
 } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
@@ -37,6 +37,28 @@ function StatusBadge({ status, unlockedAt }) {
     return <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Waiting ({days}d)</span>
   }
   return <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">In Progress</span>
+}
+
+function FileList({ attachments }) {
+  if (!attachments?.length) return null
+
+  async function download(attachment) {
+    const { data, error } = await getPipelineFileUrl(attachment.file_path)
+    if (error || !data?.signedUrl) { alert('Could not get download link.'); return }
+    window.open(data.signedUrl, '_blank')
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {attachments.map(a => (
+        <button key={a.id} onClick={() => download(a)}
+          className="flex items-center gap-1.5 text-xs bg-white border border-gray-300 rounded px-2 py-1 hover:bg-blue-50 hover:border-blue-400 text-blue-700 transition-colors">
+          <span>📎</span>
+          <span className="max-w-[160px] truncate">{a.file_name}</span>
+        </button>
+      ))}
+    </div>
+  )
 }
 
 function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
@@ -148,11 +170,7 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
           </label>
           <input type="file" onChange={e => setFile(e.target.files[0])}
             className="w-full mt-1 text-sm" />
-          {step.pipeline_attachments?.length > 0 && (
-            <p className="text-xs text-green-600 mt-1">
-              {step.pipeline_attachments.length} file(s) already attached
-            </p>
-          )}
+          <FileList attachments={step.pipeline_attachments} />
         </div>
       )}
 
@@ -297,6 +315,7 @@ export default function PipelineDetail() {
                         Completed {new Date(step.completed_at).toLocaleDateString('en-PH')}
                       </p>
                     )}
+                    <FileList attachments={step.pipeline_attachments} />
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
