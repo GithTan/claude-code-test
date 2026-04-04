@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { _setAuthToken } from '../lib/api'
+import { _setAuthToken, getProfile } from '../lib/api'
 
 const AuthContext = createContext({})
 
@@ -10,11 +10,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   async function loadProfile(userId) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('role, full_name')
-      .eq('id', userId)
-      .single()
+    const { data, error } = await getProfile(userId)
     if (error || !data) {
       await supabase.auth.signOut()
     } else {

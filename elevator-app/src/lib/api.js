@@ -32,264 +32,222 @@ function rest(path, opts = {}) {
     })
 }
 
-// Customers
+// Unwrap array → single record
+async function restOne(path) {
+  const { data, error } = await rest(path)
+  if (error) return { data: null, error }
+  return { data: Array.isArray(data) ? data[0] ?? null : data, error: null }
+}
+
+// POST → single record
+async function restPost(path, body) {
+  const { data, error } = await rest(path, { method: 'POST', body: JSON.stringify(body) })
+  if (error) return { data: null, error }
+  return { data: Array.isArray(data) ? data[0] : data, error: null }
+}
+
+// PATCH → single record
+async function restPatch(path, body) {
+  const { data, error } = await rest(path, { method: 'PATCH', body: JSON.stringify(body) })
+  if (error) return { data: null, error }
+  return { data: Array.isArray(data) ? data[0] : data, error: null }
+}
+
+// DELETE
+function restDelete(path) {
+  return rest(path, { method: 'DELETE', headers: { Prefer: '' } })
+}
+
+// ─── Profile ─────────────────────────────────────────────────────────────────
+export async function getProfile(userId) {
+  return restOne(`/profiles?select=role,full_name&id=eq.${userId}`)
+}
+
+// ─── Customers ───────────────────────────────────────────────────────────────
 export async function getCustomers() {
-  return supabase.from('customers').select('*').order('name')
+  return rest('/customers?select=*&order=name.asc')
 }
 export async function getCustomer(id) {
-  return supabase.from('customers').select('*').eq('id', id).single()
+  return restOne(`/customers?select=*&id=eq.${id}`)
 }
 export async function createCustomer(data) {
-  return supabase.from('customers').insert(data).select().single()
+  return restPost('/customers', data)
 }
 export async function updateCustomer(id, data) {
-  return supabase.from('customers').update(data).eq('id', id).select().single()
+  return restPatch(`/customers?id=eq.${id}`, data)
 }
 
-// Buildings
+// ─── Buildings ───────────────────────────────────────────────────────────────
 export async function getBuildings(customerId) {
-  return supabase.from('buildings').select('*').eq('customer_id', customerId).order('name')
+  return rest(`/buildings?select=*&customer_id=eq.${customerId}&order=name.asc`)
 }
 export async function getBuilding(id) {
-  return supabase.from('buildings').select('*').eq('id', id).single()
+  return restOne(`/buildings?select=*&id=eq.${id}`)
 }
 export async function createBuilding(data) {
-  return supabase.from('buildings').insert(data).select().single()
+  return restPost('/buildings', data)
 }
 export async function updateBuilding(id, data) {
-  return supabase.from('buildings').update(data).eq('id', id).select().single()
+  return restPatch(`/buildings?id=eq.${id}`, data)
 }
 
-// Elevators
+// ─── Elevators ───────────────────────────────────────────────────────────────
 export async function getElevators(buildingId) {
-  return supabase.from('elevators').select('*').eq('building_id', buildingId).order('unit_number')
+  return rest(`/elevators?select=*&building_id=eq.${buildingId}&order=unit_number.asc`)
 }
 export async function getAllElevators() {
-  return supabase
-    .from('elevators')
-    .select('*, buildings(name, customers(name))')
-    .order('unit_number')
+  return rest('/elevators?select=*,buildings(name,customers(name))&order=unit_number.asc')
 }
 export async function getElevator(id) {
-  return supabase.from('elevators').select('*').eq('id', id).single()
+  return restOne(`/elevators?select=*&id=eq.${id}`)
 }
 export async function createElevator(data) {
-  return supabase.from('elevators').insert(data).select().single()
+  return restPost('/elevators', data)
 }
 export async function updateElevator(id, data) {
-  return supabase.from('elevators').update(data).eq('id', id).select().single()
+  return restPatch(`/elevators?id=eq.${id}`, data)
 }
 
-// Maintenance Schedules
+// ─── Maintenance Schedules ───────────────────────────────────────────────────
 export async function getMaintenanceSchedules(elevatorId) {
-  return supabase.from('maintenance_schedules').select('*').eq('elevator_id', elevatorId).order('next_due_date')
+  return rest(`/maintenance_schedules?select=*&elevator_id=eq.${elevatorId}&order=next_due_date.asc`)
 }
 export async function getAllMaintenanceSchedules() {
-  return supabase
-    .from('maintenance_schedules')
-    .select('*, elevators(unit_number, buildings(name, customers(name)))')
-    .order('next_due_date')
+  return rest('/maintenance_schedules?select=*,elevators(unit_number,buildings(name,customers(name)))&order=next_due_date.asc')
 }
 export async function createMaintenanceSchedule(data) {
-  return supabase.from('maintenance_schedules').insert(data).select().single()
+  return restPost('/maintenance_schedules', data)
 }
 export async function updateMaintenanceSchedule(id, data) {
-  return supabase.from('maintenance_schedules').update(data).eq('id', id).select().single()
+  return restPatch(`/maintenance_schedules?id=eq.${id}`, data)
 }
 
-// Jobs
+// ─── Jobs ────────────────────────────────────────────────────────────────────
 export async function getJobs() {
-  return supabase
-    .from('jobs')
-    .select('*, elevators(unit_number, buildings(name, customers(name))), maintenance_schedules(visit_type)')
-    .order('scheduled_date', { ascending: false })
+  return rest('/jobs?select=*,elevators(unit_number,buildings(name,customers(name))),maintenance_schedules(visit_type)&order=scheduled_date.desc')
 }
 export async function getJob(id) {
-  return supabase.from('jobs').select('*').eq('id', id).single()
+  return restOne(`/jobs?select=*&id=eq.${id}`)
 }
 export async function createJob(data) {
-  return supabase.from('jobs').insert(data).select().single()
+  return restPost('/jobs', data)
 }
 export async function updateJob(id, data) {
-  return supabase.from('jobs').update(data).eq('id', id).select().single()
+  return restPatch(`/jobs?id=eq.${id}`, data)
 }
 
-// Invoices
+// ─── Invoices ────────────────────────────────────────────────────────────────
 export async function getInvoices() {
-  return supabase
-    .from('invoices')
-    .select('*, customers(name)')
-    .order('issue_date', { ascending: false })
+  return rest('/invoices?select=*,customers(name)&order=issue_date.desc')
 }
 export async function getInvoice(id) {
-  return supabase
-    .from('invoices')
-    .select('*, customers(name), invoice_items(*), payments(*), jobs(elevators(unit_number))')
-    .eq('id', id)
-    .single()
+  return restOne(`/invoices?select=*,customers(name),invoice_items(*),payments(*),jobs(elevators(unit_number))&id=eq.${id}`)
 }
 export async function createInvoice(data) {
-  return supabase.from('invoices').insert(data).select().single()
+  return restPost('/invoices', data)
 }
 export async function updateInvoice(id, data) {
-  return supabase.from('invoices').update(data).eq('id', id).select().single()
+  return restPatch(`/invoices?id=eq.${id}`, data)
 }
 export async function createInvoiceItem(data) {
-  return supabase.from('invoice_items').insert(data).select().single()
+  return restPost('/invoice_items', data)
 }
 export async function deleteInvoiceItem(id) {
-  return supabase.from('invoice_items').delete().eq('id', id)
+  return restDelete(`/invoice_items?id=eq.${id}`)
 }
 export async function createPayment(data) {
-  return supabase.from('payments').insert(data).select().single()
+  return restPost('/payments', data)
 }
 export async function deletePayment(id) {
-  return supabase.from('payments').delete().eq('id', id)
+  return restDelete(`/payments?id=eq.${id}`)
 }
 
-// Installation Projects
+// ─── Installation Projects ───────────────────────────────────────────────────
 export async function getProjects() {
   return rest('/installation_projects?select=*,customers(name)&order=created_at.desc')
 }
 export async function getProject(id) {
-  const { data, error } = await rest(`/installation_projects?select=*,customers(name),payment_milestones(*)&id=eq.${id}`)
-  if (error) return { data: null, error }
-  return { data: Array.isArray(data) ? data[0] ?? null : data, error: null }
+  return restOne(`/installation_projects?select=*,customers(name),payment_milestones(*)&id=eq.${id}`)
 }
 export async function createProject(data) {
-  const { data: rows, error } = await rest('/installation_projects', {
-    method: 'POST', body: JSON.stringify(data),
-  })
-  if (error) return { data: null, error }
-  return { data: Array.isArray(rows) ? rows[0] : rows, error: null }
+  return restPost('/installation_projects', data)
 }
 export async function updateProject(id, data) {
-  return supabase.from('installation_projects').update(data).eq('id', id).select().single()
+  return restPatch(`/installation_projects?id=eq.${id}`, data)
 }
 export async function createMilestone(data) {
-  return supabase.from('payment_milestones').insert(data).select().single()
+  return restPost('/payment_milestones', data)
 }
 export async function updateMilestone(id, data) {
-  return supabase.from('payment_milestones').update(data).eq('id', id).select().single()
+  return restPatch(`/payment_milestones?id=eq.${id}`, data)
 }
 export async function deleteMilestone(id) {
-  return supabase.from('payment_milestones').delete().eq('id', id)
+  return restDelete(`/payment_milestones?id=eq.${id}`)
 }
 
-// Reports
+// ─── Reports ─────────────────────────────────────────────────────────────────
 export async function getOverdueMaintenance() {
   const today = new Date().toISOString().split('T')[0]
-  return supabase
-    .from('maintenance_schedules')
-    .select('*, elevators(unit_number, buildings(name, customers(name)))')
-    .lt('next_due_date', today)
-    .order('next_due_date')
+  return rest(`/maintenance_schedules?select=*,elevators(unit_number,buildings(name,customers(name)))&next_due_date=lt.${today}&order=next_due_date.asc`)
 }
 export async function getJobsThisMonth() {
   const now = new Date()
   const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
-  return supabase
-    .from('jobs')
-    .select('*, elevators(unit_number, buildings(name, customers(name))), maintenance_schedules(visit_type)')
-    .eq('status', 'completed')
-    .gte('completed_date', start)
-    .lte('completed_date', end)
-    .order('completed_date', { ascending: false })
+  return rest(`/jobs?select=*,elevators(unit_number,buildings(name,customers(name))),maintenance_schedules(visit_type)&status=eq.completed&completed_date=gte.${start}&completed_date=lte.${end}&order=completed_date.desc`)
 }
 export async function getTechnicianSummary() {
   const now = new Date()
   const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-  return supabase
-    .from('jobs')
-    .select('technician_name, status, completed_date')
-    .gte('scheduled_date', start)
-    .order('technician_name')
+  return rest(`/jobs?select=technician_name,status,completed_date&scheduled_date=gte.${start}&order=technician_name.asc`)
 }
 export async function getElevatorStatusOverview() {
-  return supabase
-    .from('elevators')
-    .select('status, buildings(name, customers(name))')
-    .order('status')
+  return rest('/elevators?select=status,buildings(name,customers(name))&order=status.asc')
 }
 export async function getUnpaidInvoices() {
-  return supabase
-    .from('invoices')
-    .select('*, customers(name)')
-    .in('status', ['unpaid', 'partially_paid'])
-    .order('due_date')
+  return rest('/invoices?select=*,customers(name)&status=in.(unpaid,partially_paid)&order=due_date.asc')
 }
 export async function getPaymentHistory() {
-  return supabase
-    .from('payments')
-    .select('*, invoices(invoice_number, customers(name))')
-    .order('payment_date', { ascending: false })
+  return rest('/payments?select=*,invoices(invoice_number,customers(name))&order=payment_date.desc')
 }
 export async function getMonthlyRevenue() {
-  return supabase
-    .from('payments')
-    .select('amount, payment_date')
-    .order('payment_date', { ascending: false })
+  return rest('/payments?select=amount,payment_date&order=payment_date.desc')
 }
 
-// AMC Contracts
+// ─── AMC Contracts ───────────────────────────────────────────────────────────
 export async function getAmcContracts() {
-  return supabase
-    .from('amc_contracts')
-    .select('*, customers(name)')
-    .order('end_date')
+  return rest('/amc_contracts?select=*,customers(name)&order=end_date.asc')
 }
 export async function getAmcContract(id) {
-  return supabase
-    .from('amc_contracts')
-    .select('*, customers(name)')
-    .eq('id', id)
-    .single()
+  return restOne(`/amc_contracts?select=*,customers(name)&id=eq.${id}`)
 }
 export async function createAmcContract(data) {
-  return supabase.from('amc_contracts').insert(data).select().single()
+  return restPost('/amc_contracts', data)
 }
 export async function updateAmcContract(id, data) {
-  return supabase.from('amc_contracts').update(data).eq('id', id).select().single()
+  return restPatch(`/amc_contracts?id=eq.${id}`, data)
 }
 export async function getExpiringAmcContracts() {
   const today = new Date().toISOString().split('T')[0]
   const in60days = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  return supabase
-    .from('amc_contracts')
-    .select('*, customers(name)')
-    .eq('status', 'active')
-    .lte('end_date', in60days)
-    .gte('end_date', today)
-    .order('end_date')
+  return rest(`/amc_contracts?select=*,customers(name)&status=eq.active&end_date=lte.${in60days}&end_date=gte.${today}&order=end_date.asc`)
 }
 
-// Breakdowns
+// ─── Breakdowns ──────────────────────────────────────────────────────────────
 export async function getBreakdowns() {
-  return supabase
-    .from('breakdowns')
-    .select('*, elevators(unit_number, buildings(name, customers(name)))')
-    .order('reported_date', { ascending: false })
+  return rest('/breakdowns?select=*,elevators(unit_number,buildings(name,customers(name)))&order=reported_date.desc')
 }
 export async function getBreakdown(id) {
-  return supabase
-    .from('breakdowns')
-    .select('*, elevators(unit_number, buildings(name, customers(name)))')
-    .eq('id', id)
-    .single()
+  return restOne(`/breakdowns?select=*,elevators(unit_number,buildings(name,customers(name)))&id=eq.${id}`)
 }
 export async function createBreakdown(data) {
-  return supabase.from('breakdowns').insert(data).select().single()
+  return restPost('/breakdowns', data)
 }
 export async function updateBreakdown(id, data) {
-  return supabase.from('breakdowns').update(data).eq('id', id).select().single()
+  return restPatch(`/breakdowns?id=eq.${id}`, data)
 }
 export async function getOpenBreakdowns() {
-  return supabase
-    .from('breakdowns')
-    .select('*, elevators(unit_number, buildings(name, customers(name)))')
-    .in('status', ['open', 'in_progress'])
-    .order('priority')
+  return rest('/breakdowns?select=*,elevators(unit_number,buildings(name,customers(name)))&status=in.(open,in_progress)&order=priority.asc')
 }
 
 // ─── Pipeline Tracker ───────────────────────────────────────────────────────
@@ -329,21 +287,11 @@ export async function getPipelines() {
 }
 
 export async function getPipeline(id) {
-  const { data, error } = await rest(
-    `/pipelines?select=*,installation_projects(project_name,customers(name)),pipeline_steps(*,pipeline_attachments(*))&id=eq.${id}`
-  )
-  if (error) return { data: null, error }
-  return { data: Array.isArray(data) ? data[0] ?? null : data, error: null }
+  return restOne(`/pipelines?select=*,installation_projects(project_name,customers(name)),pipeline_steps(*,pipeline_attachments(*))&id=eq.${id}`)
 }
 
 export async function createPipeline(data) {
-  const { data: rows, error } = await rest('/pipelines', {
-    method: 'POST',
-    body: JSON.stringify(data),
-    headers: { Prefer: 'return=representation' },
-  })
-  if (error) return { data: null, error }
-  return { data: Array.isArray(rows) ? rows[0] : rows, error: null }
+  return restPost('/pipelines', data)
 }
 
 export async function createPipelineSteps(pipelineId) {
