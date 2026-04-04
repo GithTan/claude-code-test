@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getAmcContracts } from '../../lib/api'
+import { useAuth } from '../../contexts/AuthContext'
 
 function fmt(amount) {
   return `₱${Number(amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
@@ -8,21 +9,17 @@ function fmt(amount) {
 
 function expiryBadge(endDate, status) {
   if (status === 'expired' || status === 'cancelled') {
-    return <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 capitalize">{status}</span>
+    return <span style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, backgroundColor: '#E8E8E8', color: '#2C2C2C' }} className="capitalize">{status}</span>
   }
-  const today = new Date()
-  const end = new Date(endDate)
-  const daysLeft = Math.ceil((end - today) / (1000 * 60 * 60 * 24))
-  if (daysLeft <= 30) {
-    return <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Expires in {daysLeft}d</span>
-  }
-  if (daysLeft <= 60) {
-    return <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">Expires in {daysLeft}d</span>
-  }
-  return <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Active</span>
+  const daysLeft = Math.ceil((new Date(endDate) - new Date()) / 86400000)
+  if (daysLeft <= 30) return <span style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, backgroundColor: '#2C2C2C', color: '#D4AF37' }}>Expires in {daysLeft}d</span>
+  if (daysLeft <= 60) return <span style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, backgroundColor: '#F5F5DC', color: '#2C2C2C', border: '1px solid #D4AF37' }}>Expires in {daysLeft}d</span>
+  return <span style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, backgroundColor: '#D4AF37', color: '#2C2C2C' }}>Active</span>
 }
 
 export default function AmcList() {
+  const { role } = useAuth()
+  const isAdmin = role === 'admin'
   const [contracts, setContracts] = useState([])
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
@@ -34,58 +31,85 @@ export default function AmcList() {
     })
   }, [])
 
-  if (loading) return <p className="text-gray-500">Loading...</p>
+  if (loading) return <p style={{ color: '#888888' }}>Loading…</p>
 
   const filtered = filter === 'all' ? contracts : contracts.filter(c => c.status === filter)
+
+  const thStyle = { padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em', backgroundColor: '#F5F5DC', borderBottom: '1px solid #D4AF37' }
+  const tdStyle = { padding: '12px 16px', fontSize: 13, color: '#2C2C2C', borderBottom: '1px solid #E8E0C8' }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">AMC Contracts</h1>
+        <h1 className="text-2xl font-bold" style={{ color: '#2C2C2C' }}>Maintenance Contracts</h1>
         <div className="flex gap-3 items-center">
           <select value={filter} onChange={e => setFilter(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            style={{ border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '6px 12px', fontSize: 13 }}>
             <option value="all">All</option>
             <option value="active">Active</option>
             <option value="expired">Expired</option>
             <option value="cancelled">Cancelled</option>
           </select>
           <Link to="/contracts/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+            style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>
             New Contract
           </Link>
         </div>
       </div>
 
       {filtered.length === 0 ? (
-        <p className="text-gray-500">No contracts yet.</p>
+        <p style={{ color: '#888888' }}>No contracts yet.</p>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div style={{ border: '1px solid #D4AF37', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Contract #</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">End</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Monthly Fee</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3"></th>
+                <th style={thStyle}>Contract Name</th>
+                <th style={thStyle}>Customer</th>
+                {isAdmin && <th style={thStyle}>Contact</th>}
+                <th style={thStyle}>Type</th>
+                <th style={thStyle}>Period</th>
+                <th style={thStyle}>Billing</th>
+                {isAdmin && <th style={{ ...thStyle, textAlign: 'right' }}>Monthly Fee</th>}
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}></th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody style={{ backgroundColor: '#FFFFFF' }}>
               {filtered.map(c => (
-                <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-gray-900">{c.contract_number}</td>
-                  <td className="px-6 py-4 text-gray-600">{c.customers?.name || '—'}</td>
-                  <td className="px-6 py-4 text-gray-600 capitalize">{c.contract_type?.replace(/_/g, ' ')}</td>
-                  <td className="px-6 py-4 text-gray-600">{c.start_date}</td>
-                  <td className="px-6 py-4 text-gray-600">{c.end_date}</td>
-                  <td className="px-6 py-4 text-right font-medium text-gray-900">{fmt(c.monthly_fee)}</td>
-                  <td className="px-6 py-4">{expiryBadge(c.end_date, c.status)}</td>
-                  <td className="px-6 py-4 text-right">
-                    <Link to={`/contracts/${c.id}`} className="text-blue-600 hover:underline text-sm">View</Link>
+                <tr key={c.id} style={{ cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FAFAF0'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FFFFFF'}>
+                  <td style={{ ...tdStyle, fontWeight: 600 }}>{c.contract_number || '—'}</td>
+                  <td style={tdStyle}>{c.customers?.name || '—'}</td>
+                  {isAdmin && (
+                    <td style={tdStyle}>
+                      {c.contact_name && <p style={{ fontSize: 13 }}>{c.contact_name}</p>}
+                      {c.contact_number
+                        ? <p style={{ fontSize: 12, color: '#D4AF37', fontWeight: 600 }}>{c.contact_number}</p>
+                        : <p style={{ fontSize: 12, color: '#CCCCCC' }}>—</p>
+                      }
+                    </td>
+                  )}
+                  <td style={{ ...tdStyle, textTransform: 'capitalize' }}>{c.contract_type?.replace(/_/g, ' ')}</td>
+                  <td style={tdStyle}>
+                    <p style={{ fontSize: 12 }}>{c.start_date}</p>
+                    <p style={{ fontSize: 12, color: '#888888' }}>to {c.end_date}</p>
+                  </td>
+                  <td style={{ ...tdStyle, textTransform: 'capitalize', fontSize: 12 }}>
+                    {(c.billing_frequency || 'monthly').replace(/_/g, ' ')}
+                  </td>
+                  {isAdmin && (
+                    <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 600, color: c.monthly_fee > 0 ? '#D4AF37' : '#2C2C2C' }}>
+                      {fmt(c.monthly_fee)}
+                      <p style={{ fontSize: 11, fontWeight: 400, color: '#888888' }}>
+                        {c.vat_inclusive ? 'VAT Inc.' : 'Non-VAT'}
+                      </p>
+                    </td>
+                  )}
+                  <td style={tdStyle}>{expiryBadge(c.end_date, c.status)}</td>
+                  <td style={{ ...tdStyle, textAlign: 'right' }}>
+                    <Link to={`/contracts/${c.id}`} style={{ color: '#D4AF37', fontSize: 13, fontWeight: 600 }}>View →</Link>
                   </td>
                 </tr>
               ))}

@@ -24,6 +24,8 @@ export default function AmcForm() {
   const [form, setForm] = useState({
     customer_id: '',
     contract_number: '',
+    contact_name: '',
+    contact_number: '',
     contract_type: 'comprehensive',
     start_date: '',
     end_date: '',
@@ -43,6 +45,8 @@ export default function AmcForm() {
         if (data) setForm({
           customer_id: data.customer_id,
           contract_number: data.contract_number,
+          contact_name: data.contact_name || '',
+          contact_number: data.contact_number || '',
           contract_type: data.contract_type,
           start_date: data.start_date,
           end_date: data.end_date,
@@ -109,6 +113,22 @@ export default function AmcForm() {
               {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
+        </div>
+
+        {/* Contact Person */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label style={labelStyle}>Contact Person</label>
+            <input name="contact_name" value={form.contact_name} onChange={handleChange}
+              placeholder="e.g. John Santos"
+              style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Contact Number</label>
+            <input name="contact_number" value={form.contact_number} onChange={handleChange}
+              placeholder="e.g. 09171234567"
+              style={inputStyle} />
+          </div>
         </div>
 
         {/* Contract Type */}
