@@ -260,3 +260,142 @@ export async function getOpenBreakdowns() {
     .in('status', ['open', 'in_progress'])
     .order('priority')
 }
+
+// ─── Pipeline Tracker ───────────────────────────────────────────────────────
+
+export const PIPELINE_STEPS = [
+  { number: 1,  label: 'Project Awarded',         gate: 'confirm_with_data',     role: 'admin' },
+  { number: 2,  label: 'Shop Drawings Prepared',  gate: 'file_required',         role: 'admin' },
+  { number: 3,  label: 'Client Signs Drawings',   gate: 'file_required',         role: 'admin' },
+  { number: 4,  label: 'Supplier Approval',       gate: 'file_required',         role: 'coordinator' },
+  { number: 5,  label: 'Payment to Supplier',     gate: 'file_required',         role: 'coordinator' },
+  { number: 6,  label: 'Production Started',      gate: 'date_entry',            role: 'coordinator' },
+  { number: 7,  label: 'Production Monitoring',   gate: 'checkpoint',            role: 'coordinator' },
+  { number: 8,  label: 'Shipment',                gate: 'tracking_entry',        role: 'coordinator' },
+  { number: 9,  label: 'Customs & Arrival',       gate: 'confirm_optional_file', role: 'coordinator' },
+  { number: 10, label: 'Installation',            gate: 'confirm_optional_file', role: 'operations' },
+  { number: 11, label: 'Testing',                 gate: 'file_required',         role: 'admin' },
+  { number: 12, label: 'Turnover to Client',      gate: 'file_required',         role: 'admin' },
+]
+
+export const PROJECT_TYPES = [
+  { value: 'new_installation', label: 'New Installation' },
+  { value: 'modernization',    label: 'Modernization' },
+  { value: 'escalator',        label: 'Escalator Installation' },
+  { value: 'dismantle_install', label: 'Dismantle + Install New' },
+]
+
+export const PIPELINE_STAGES = [
+  { label: 'Drawings',              steps: [1, 2, 3, 4] },
+  { label: 'Payment & Production',  steps: [5, 6, 7] },
+  { label: 'Shipping',              steps: [8, 9] },
+  { label: 'Installation',          steps: [10, 11] },
+  { label: 'Complete',              steps: [12] },
+]
+
+export async function getPipelines() {
+  return supabase
+    .from('pipelines')
+    .select('*, installation_projects(name, customers(name)), pipeline_steps(*)')
+    .order('created_at', { ascending: false })
+}
+
+export async function getPipeline(id) {
+  return supabase
+    .from('pipelines')
+    .select('*, installation_projects(name, customers(name)), pipeline_steps(*, pipeline_attachments(*))')
+    .eq('id', id)
+    .single()
+}
+
+export async function createPipeline(data) {
+  return supabase.from('pipelines').insert(data).select().single()
+}
+
+export async function createPipelineSteps(pipelineId) {
+  const steps = PIPELINE_STEPS.map(s => ({
+    pipeline_id: pipelineId,
+    step_number: s.number,
+    status: s.number === 1 ? 'unlocked' : 'locked',
+    assigned_role: s.role,
+    unlocked_at: s.number === 1 ? new Date().toISOString() : null,
+  }))
+  return supabase.from('pipeline_steps').insert(steps).select()
+}
+
+export async function updatePipelineStep(stepId, updates) {
+  return supabase.from('pipeline_steps').update(updates).eq('id', stepId).select().single()
+}
+
+export async function completeStep(stepId, { notes, data }) {
+  return supabase
+    .from('pipeline_steps')
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      notes,
+      data,
+    })
+    .eq('id', stepId)
+    .select()
+    .single()
+}
+
+export async function unlockNextStep(pipelineId, nextStepNumber) {
+  return supabase
+    .from('pipeline_steps')
+    .update({ status: 'unlocked', unlocked_at: new Date().toISOString() })
+    .eq('pipeline_id', pipelineId)
+    .eq('step_number', nextStepNumber)
+    .select()
+    .single()
+}
+
+export async function updatePipelineCurrentStep(pipelineId, stepNumber) {
+  const updates = { current_step: stepNumber, updated_at: new Date().toISOString() }
+  if (stepNumber > 12) updates.status = 'completed'
+  return supabase.from('pipelines').update(updates).eq('id', pipelineId).select().single()
+}
+
+export async function overrideGate(pipelineId, stepId, reason) {
+  await supabase
+    .from('pipeline_steps')
+    .update({ status: 'unlocked', unlocked_at: new Date().toISOString() })
+    .eq('id', stepId)
+  return logActivity(pipelineId, stepId, 'gate_overridden', reason, {})
+}
+
+export async function logActivity(pipelineId, stepId, action, notes, metadata) {
+  return supabase.from('pipeline_activity_log').insert({
+    pipeline_id: pipelineId,
+    pipeline_step_id: stepId,
+    action,
+    notes,
+    metadata,
+  }).select().single()
+}
+
+export async function getPipelineActivity(pipelineId) {
+  return supabase
+    .from('pipeline_activity_log')
+    .select('*')
+    .eq('pipeline_id', pipelineId)
+    .order('performed_at', { ascending: false })
+}
+
+export async function uploadPipelineFile(stepId, file) {
+  const path = `${stepId}/${Date.now()}-${file.name}`
+  const { data, error } = await supabase.storage
+    .from('pipeline-files')
+    .upload(path, file)
+  if (error) return { data: null, error }
+  return supabase.from('pipeline_attachments').insert({
+    pipeline_step_id: stepId,
+    file_name: file.name,
+    file_path: path,
+  }).select().single()
+}
+
+export async function getPipelineFileUrl(filePath) {
+  return supabase.storage.from('pipeline-files').createSignedUrl(filePath, 3600)
+}

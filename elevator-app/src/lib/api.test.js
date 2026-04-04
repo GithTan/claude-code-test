@@ -82,3 +82,45 @@ describe('getJobs', () => {
     expect(result).toEqual({ data: [], error: null })
   })
 })
+
+// ─── Pipeline Tracker Tests ──────────────────────────────────────────────────
+
+import {
+  getPipelines, getPipeline, createPipeline,
+  completeStep, overrideGate,
+  logActivity, getPipelineActivity,
+} from './api'
+
+describe('getPipelines', () => {
+  it('queries pipelines with project and steps', async () => {
+    const chain = mockChain({ data: [], error: null })
+    supabase.from.mockReturnValue(chain)
+    const result = await getPipelines()
+    expect(supabase.from).toHaveBeenCalledWith('pipelines')
+    expect(result).toEqual({ data: [], error: null })
+  })
+})
+
+describe('createPipeline', () => {
+  it('inserts a pipeline and returns single', async () => {
+    const chain = mockChain({ data: { id: 'p1' }, error: null })
+    supabase.from.mockReturnValue(chain)
+    const result = await createPipeline({
+      project_id: 'proj1',
+      project_type: 'new_installation',
+      supplier: 'KONE',
+    })
+    expect(supabase.from).toHaveBeenCalledWith('pipelines')
+    expect(result).toEqual({ data: { id: 'p1' }, error: null })
+  })
+})
+
+describe('completeStep', () => {
+  it('updates a pipeline_step status to completed', async () => {
+    const chain = mockChain({ data: { id: 's1', status: 'completed' }, error: null })
+    supabase.from.mockReturnValue(chain)
+    const result = await completeStep('s1', { notes: 'Done', data: {} })
+    expect(supabase.from).toHaveBeenCalledWith('pipeline_steps')
+    expect(result).toEqual({ data: { id: 's1', status: 'completed' }, error: null })
+  })
+})
