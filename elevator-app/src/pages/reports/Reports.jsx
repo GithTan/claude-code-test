@@ -9,17 +9,48 @@ function fmt(amount) {
   return `₱${Number(amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
 }
 
+const thStyle = { padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em', backgroundColor: '#F5F5DC', borderBottom: '1px solid #D4AF37' }
+const thRight = { ...{ padding: '10px 16px', fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em', backgroundColor: '#F5F5DC', borderBottom: '1px solid #D4AF37' }, textAlign: 'right' }
+const tdStyle = { padding: '10px 16px', fontSize: 13, color: '#2C2C2C', borderBottom: '1px solid #E8E0C8' }
+
 function Section({ title, children }) {
   return (
-    <div className="bg-white rounded-lg shadow p-6 mb-6">
-      <h2 className="text-lg font-semibold text-gray-700 mb-4">{title}</h2>
+    <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24, marginBottom: 20 }}>
+      <p style={{ fontSize: 14, fontWeight: 700, color: '#2C2C2C', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</p>
       {children}
     </div>
   )
 }
 
 function EmptyState() {
-  return <p className="text-gray-500 text-sm">No data.</p>
+  return <p style={{ color: '#888888', fontSize: 13 }}>No data.</p>
+}
+
+function DataTable({ columns, rows }) {
+  return (
+    <div style={{ border: '1px solid #D4AF37', overflow: 'hidden' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr>
+            {columns.map(c => (
+              <th key={c.key} style={c.right ? thRight : thStyle}>{c.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody style={{ backgroundColor: '#FFFFFF' }}>
+          {rows.map((row, i) => (
+            <tr key={i}>
+              {columns.map(c => (
+                <td key={c.key} style={{ ...tdStyle, ...(c.right ? { textAlign: 'right' } : {}), ...(c.bold ? { fontWeight: 600 } : {}), ...(c.red ? { color: '#8B0000', fontWeight: 700 } : {}) }}>
+                  {row[c.key] || '—'}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
 }
 
 export default function Reports() {
@@ -52,7 +83,7 @@ export default function Reports() {
     Promise.all(fetches).then(() => setLoading(false))
   }, [isAdmin])
 
-  if (loading) return <p className="text-gray-500">Loading...</p>
+  if (loading) return <p style={{ color: '#888888' }}>Loading…</p>
 
   const techMap = {}
   techSummary.forEach(j => {
@@ -69,106 +100,89 @@ export default function Reports() {
   const revenueMonths = Object.entries(revenueMap).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6)
 
   const statusMap = {}
-  elevatorStatus.forEach(e => {
-    statusMap[e.status] = (statusMap[e.status] || 0) + 1
-  })
+  elevatorStatus.forEach(e => { statusMap[e.status] = (statusMap[e.status] || 0) + 1 })
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Reports</h1>
+      <div className="flex justify-between items-center mb-1">
+        <h1 className="text-2xl font-bold" style={{ color: '#2C2C2C' }}>Reports</h1>
         <button onClick={() => window.print()}
-          className="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200 text-sm">
+          style={{ border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
           Print / Export PDF
         </button>
       </div>
+      <p className="text-sm mb-6" style={{ color: '#888888' }}>
+        Operational summary — overdue visits, technician activity, and elevator status at a glance.
+      </p>
 
       <Section title="Overdue Maintenance Visits">
         {overdue.length === 0 ? <EmptyState /> : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Building</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Elevator</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Visit Type</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {overdue.map(s => (
-                <tr key={s.id} className="text-sm">
-                  <td className="py-2 text-gray-900">{s.elevators?.buildings?.customers?.name}</td>
-                  <td className="py-2 text-gray-600">{s.elevators?.buildings?.name}</td>
-                  <td className="py-2 font-medium text-gray-900">{s.elevators?.unit_number}</td>
-                  <td className="py-2 text-gray-600 capitalize">{s.visit_type}</td>
-                  <td className="py-2 text-red-600 font-medium">{s.next_due_date}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            columns={[
+              { key: 'customer', label: 'Customer', bold: true },
+              { key: 'building', label: 'Building' },
+              { key: 'elevator', label: 'Elevator', bold: true },
+              { key: 'type', label: 'Visit Type' },
+              { key: 'due', label: 'Due Date', red: true },
+            ]}
+            rows={overdue.map(s => ({
+              customer: s.elevators?.buildings?.customers?.name,
+              building: s.elevators?.buildings?.name,
+              elevator: s.elevators?.unit_number,
+              type: s.visit_type,
+              due: s.next_due_date,
+            }))}
+          />
         )}
       </Section>
 
-      <Section title="Jobs Completed This Month">
+      <Section title="Service Visits Completed This Month">
         {jobsMonth.length === 0 ? <EmptyState /> : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Elevator</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Technician</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {jobsMonth.map(j => (
-                <tr key={j.id} className="text-sm">
-                  <td className="py-2 text-gray-900">{j.completed_date}</td>
-                  <td className="py-2 text-gray-600">{j.elevators?.buildings?.customers?.name}</td>
-                  <td className="py-2 font-medium text-gray-900">{j.elevators?.unit_number}</td>
-                  <td className="py-2 text-gray-600 capitalize">{j.maintenance_schedules?.visit_type}</td>
-                  <td className="py-2 text-gray-600">{j.technician_name || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            columns={[
+              { key: 'date', label: 'Date' },
+              { key: 'customer', label: 'Customer' },
+              { key: 'elevator', label: 'Elevator', bold: true },
+              { key: 'type', label: 'Type' },
+              { key: 'tech', label: 'Technician' },
+            ]}
+            rows={jobsMonth.map(j => ({
+              date: j.completed_date,
+              customer: j.elevators?.buildings?.customers?.name,
+              elevator: j.elevators?.unit_number,
+              type: j.maintenance_schedules?.visit_type,
+              tech: j.technician_name,
+            }))}
+          />
         )}
       </Section>
 
       <Section title="Technician Activity (This Month)">
         {Object.keys(techMap).length === 0 ? <EmptyState /> : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Technician</th>
-                <th className="py-2 text-right text-xs font-medium text-gray-500 uppercase">Scheduled</th>
-                <th className="py-2 text-right text-xs font-medium text-gray-500 uppercase">In Progress</th>
-                <th className="py-2 text-right text-xs font-medium text-gray-500 uppercase">Completed</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {Object.entries(techMap).map(([name, counts]) => (
-                <tr key={name} className="text-sm">
-                  <td className="py-2 font-medium text-gray-900">{name}</td>
-                  <td className="py-2 text-right text-gray-600">{counts.scheduled || 0}</td>
-                  <td className="py-2 text-right text-gray-600">{counts.in_progress || 0}</td>
-                  <td className="py-2 text-right text-gray-600">{counts.completed || 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            columns={[
+              { key: 'name', label: 'Technician', bold: true },
+              { key: 'scheduled', label: 'Scheduled', right: true },
+              { key: 'in_progress', label: 'In Progress', right: true },
+              { key: 'completed', label: 'Completed', right: true },
+            ]}
+            rows={Object.entries(techMap).map(([name, counts]) => ({
+              name,
+              scheduled: String(counts.scheduled || 0),
+              in_progress: String(counts.in_progress || 0),
+              completed: String(counts.completed || 0),
+            }))}
+          />
         )}
       </Section>
 
       <Section title="Elevator Status Overview">
         {Object.keys(statusMap).length === 0 ? <EmptyState /> : (
-          <div className="flex gap-6">
+          <div style={{ display: 'flex', gap: 24 }}>
             {Object.entries(statusMap).map(([status, count]) => (
-              <div key={status} className="text-center">
-                <p className="text-3xl font-bold text-gray-800">{count}</p>
-                <p className="text-sm text-gray-500 capitalize mt-1">{status.replace(/_/g, ' ')}</p>
+              <div key={status} style={{ textAlign: 'center', backgroundColor: '#FFFFFF', border: '1px solid #D4AF37', padding: '16px 24px' }}>
+                <p style={{ fontSize: 28, fontWeight: 700, color: '#2C2C2C' }}>{count}</p>
+                <p style={{ fontSize: 12, color: '#888888', textTransform: 'capitalize', marginTop: 4 }}>{status.replace(/_/g, ' ')}</p>
               </div>
             ))}
           </div>
@@ -179,76 +193,55 @@ export default function Reports() {
         <>
           <Section title="Unpaid Invoices / Outstanding Balances">
             {unpaidInvoices.length === 0 ? <EmptyState /> : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr>
-                    <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
-                    <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                    <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-                    <th className="py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                    <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {unpaidInvoices.map(inv => (
-                    <tr key={inv.id} className="text-sm">
-                      <td className="py-2 font-medium text-gray-900">{inv.invoice_number}</td>
-                      <td className="py-2 text-gray-600">{inv.customers?.name}</td>
-                      <td className="py-2 text-gray-600">{inv.due_date || '—'}</td>
-                      <td className="py-2 text-right font-medium text-gray-900">{fmt(inv.total_amount)}</td>
-                      <td className="py-2 text-gray-600 capitalize">{inv.status?.replace(/_/g, ' ')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                columns={[
+                  { key: 'invoice', label: 'Invoice #', bold: true },
+                  { key: 'customer', label: 'Customer' },
+                  { key: 'due', label: 'Due Date' },
+                  { key: 'amount', label: 'Amount', right: true, bold: true },
+                  { key: 'status', label: 'Status' },
+                ]}
+                rows={unpaidInvoices.map(inv => ({
+                  invoice: inv.invoice_number,
+                  customer: inv.customers?.name,
+                  due: inv.due_date,
+                  amount: fmt(inv.total_amount),
+                  status: inv.status?.replace(/_/g, ' '),
+                }))}
+              />
             )}
           </Section>
 
           <Section title="Payment History">
             {paymentHistory.length === 0 ? <EmptyState /> : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr>
-                    <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                    <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
-                    <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                    <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Method</th>
-                    <th className="py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {paymentHistory.map(p => (
-                    <tr key={p.id} className="text-sm">
-                      <td className="py-2 text-gray-900">{p.payment_date}</td>
-                      <td className="py-2 text-gray-600">{p.invoices?.invoice_number}</td>
-                      <td className="py-2 text-gray-600">{p.invoices?.customers?.name}</td>
-                      <td className="py-2 text-gray-600 capitalize">{p.payment_method?.replace(/_/g, ' ')}</td>
-                      <td className="py-2 text-right font-medium text-gray-900">{fmt(p.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                columns={[
+                  { key: 'date', label: 'Date' },
+                  { key: 'invoice', label: 'Invoice' },
+                  { key: 'customer', label: 'Customer' },
+                  { key: 'method', label: 'Method' },
+                  { key: 'amount', label: 'Amount', right: true, bold: true },
+                ]}
+                rows={paymentHistory.map(p => ({
+                  date: p.payment_date,
+                  invoice: p.invoices?.invoice_number,
+                  customer: p.invoices?.customers?.name,
+                  method: p.payment_method?.replace(/_/g, ' '),
+                  amount: fmt(p.amount),
+                }))}
+              />
             )}
           </Section>
 
           <Section title="Monthly Revenue Summary">
             {revenueMonths.length === 0 ? <EmptyState /> : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr>
-                    <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Month</th>
-                    <th className="py-2 text-right text-xs font-medium text-gray-500 uppercase">Total Collected</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {revenueMonths.map(([month, total]) => (
-                    <tr key={month} className="text-sm">
-                      <td className="py-2 font-medium text-gray-900">{month}</td>
-                      <td className="py-2 text-right text-gray-900 font-medium">{fmt(total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <DataTable
+                columns={[
+                  { key: 'month', label: 'Month', bold: true },
+                  { key: 'total', label: 'Total Collected', right: true, bold: true },
+                ]}
+                rows={revenueMonths.map(([month, total]) => ({ month, total: fmt(total) }))}
+              />
             )}
           </Section>
         </>
