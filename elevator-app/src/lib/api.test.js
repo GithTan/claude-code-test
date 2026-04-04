@@ -13,6 +13,7 @@ import {
   getElevators, createElevator, updateElevator,
   getMaintenanceSchedules, createMaintenanceSchedule, updateMaintenanceSchedule,
   getJobs, createJob, updateJob,
+  getPipelines, createPipeline, completeStep,
 } from './api'
 
 function mockChain(returnValue) {
@@ -84,12 +85,6 @@ describe('getJobs', () => {
 })
 
 // ─── Pipeline Tracker Tests ──────────────────────────────────────────────────
-
-import {
-  getPipelines, getPipeline, createPipeline,
-  completeStep, overrideGate,
-  logActivity, getPipelineActivity,
-} from './api'
 
 describe('getPipelines', () => {
   it('queries pipelines with project and steps', async () => {

@@ -353,15 +353,16 @@ export async function unlockNextStep(pipelineId, nextStepNumber) {
 
 export async function updatePipelineCurrentStep(pipelineId, stepNumber) {
   const updates = { current_step: stepNumber, updated_at: new Date().toISOString() }
-  if (stepNumber > 12) updates.status = 'completed'
+  if (stepNumber > PIPELINE_STEPS.length) updates.status = 'completed'
   return supabase.from('pipelines').update(updates).eq('id', pipelineId).select().single()
 }
 
 export async function overrideGate(pipelineId, stepId, reason) {
-  await supabase
+  const { error } = await supabase
     .from('pipeline_steps')
     .update({ status: 'unlocked', unlocked_at: new Date().toISOString() })
     .eq('id', stepId)
+  if (error) return { data: null, error }
   return logActivity(pipelineId, stepId, 'gate_overridden', reason, {})
 }
 
