@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createElevator, getElevator, updateElevator } from '../../lib/api'
 
+const inputStyle = {
+  width: '100%', border: '1px solid #D4AF37', backgroundColor: '#FFFFFF',
+  color: '#2C2C2C', padding: '8px 12px', fontSize: 14, outline: 'none',
+}
+const labelStyle = { display: 'block', fontSize: 13, fontWeight: 600, color: '#2C2C2C', marginBottom: 4 }
+const hintStyle = { fontSize: 11, color: '#888888', marginTop: 4 }
+
 function addOneYear(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
@@ -16,7 +23,8 @@ export default function ElevatorForm() {
 
   const [form, setForm] = useState({
     unit_number: '', brand: '', model: '', serial_number: '',
-    elevator_type: '', status: 'active', turnover_date: '',
+    elevator_type: '', capacity: '', floors_served: '',
+    status: 'active', turnover_date: '',
     warranty_expiry: '', free_maintenance_end: '',
   })
   const [error, setError] = useState('')
@@ -31,6 +39,8 @@ export default function ElevatorForm() {
           model: data.model || '',
           serial_number: data.serial_number || '',
           elevator_type: data.elevator_type || '',
+          capacity: data.capacity || '',
+          floors_served: data.floors_served || '',
           status: data.status || 'active',
           turnover_date: data.turnover_date || '',
           warranty_expiry: data.warranty_expiry || '',
@@ -74,44 +84,66 @@ export default function ElevatorForm() {
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">
+      <h1 className="text-2xl font-bold mb-6" style={{ color: '#2C2C2C' }}>
         {isEdit ? 'Edit Elevator' : 'New Elevator'}
       </h1>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-4">
+      <form onSubmit={handleSubmit}
+        style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24 }}
+        className="space-y-4">
+
         <div>
-          <label htmlFor="unit_number" className="block text-sm font-medium text-gray-700 mb-1">Unit Number *</label>
-          <input id="unit_number" name="unit_number" value={form.unit_number} onChange={handleChange} required
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <label style={labelStyle}>Unit Number / Name *</label>
+          <input name="unit_number" value={form.unit_number} onChange={handleChange} required
+            placeholder="e.g. Elevator 1, Unit A, Car 2" style={inputStyle} />
         </div>
+
+        {/* Capacity + Floors served */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="brand" className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-            <input id="brand" name="brand" value={form.brand} onChange={handleChange}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label style={labelStyle}>Capacity</label>
+            <input name="capacity" value={form.capacity} onChange={handleChange}
+              placeholder="e.g. 1000 kg / 13 pax" style={inputStyle} />
+            <p style={hintStyle}>Load capacity of this unit</p>
           </div>
           <div>
-            <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-1">Model</label>
-            <input id="model" name="model" value={form.model} onChange={handleChange}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label style={labelStyle}>Floors Served</label>
+            <input name="floors_served" value={form.floors_served} onChange={handleChange}
+              placeholder="e.g. B1–20F or 1–10" style={inputStyle} />
+            <p style={hintStyle}>Floor range this elevator covers</p>
           </div>
         </div>
-        <div>
-          <label htmlFor="serial_number" className="block text-sm font-medium text-gray-700 mb-1">Serial Number</label>
-          <input id="serial_number" name="serial_number" value={form.serial_number} onChange={handleChange}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
+
+        {/* Brand + Model */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="elevator_type" className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-            <input id="elevator_type" name="elevator_type" value={form.elevator_type} onChange={handleChange}
-              placeholder="e.g. Passenger, Cargo"
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label style={labelStyle}>Brand</label>
+            <input name="brand" value={form.brand} onChange={handleChange}
+              placeholder="e.g. Mitsubishi" style={inputStyle} />
           </div>
           <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select id="status" name="status" value={form.status} onChange={handleChange}
-              className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label style={labelStyle}>Model</label>
+            <input name="model" value={form.model} onChange={handleChange}
+              placeholder="e.g. Elenessa" style={inputStyle} />
+          </div>
+        </div>
+
+        <div>
+          <label style={labelStyle}>Serial Number</label>
+          <input name="serial_number" value={form.serial_number} onChange={handleChange}
+            style={inputStyle} />
+        </div>
+
+        {/* Type + Status */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label style={labelStyle}>Type</label>
+            <input name="elevator_type" value={form.elevator_type} onChange={handleChange}
+              placeholder="e.g. Passenger, Cargo" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Status</label>
+            <select name="status" value={form.status} onChange={handleChange} style={inputStyle}>
               <option value="active">Active</option>
               <option value="under_warranty">Under Warranty</option>
               <option value="under_free_maintenance">Under Free Maintenance</option>
@@ -119,29 +151,38 @@ export default function ElevatorForm() {
             </select>
           </div>
         </div>
+
         <div>
-          <label htmlFor="turnover_date" className="block text-sm font-medium text-gray-700 mb-1">
-            Turnover Date <span className="text-gray-400 font-normal">(auto-sets warranty &amp; free maintenance)</span>
+          <label style={labelStyle}>
+            Turnover Date{' '}
+            <span style={{ fontSize: 11, color: '#888888', fontWeight: 400 }}>(auto-sets warranty &amp; free maintenance)</span>
           </label>
-          <input id="turnover_date" name="turnover_date" type="date" value={form.turnover_date} onChange={handleChange}
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input name="turnover_date" type="date" value={form.turnover_date} onChange={handleChange}
+            style={inputStyle} />
         </div>
+
         {form.warranty_expiry && (
-          <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 bg-gray-50 rounded p-3">
-            <div><span className="font-medium">Warranty Expiry:</span> {form.warranty_expiry}</div>
-            <div><span className="font-medium">Free Maintenance End:</span> {form.free_maintenance_end}</div>
+          <div style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E0C8', padding: '10px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div>
+              <p style={{ fontSize: 11, color: '#888888', fontWeight: 600 }}>WARRANTY EXPIRY</p>
+              <p style={{ fontSize: 13, color: '#2C2C2C', fontWeight: 600 }}>{form.warranty_expiry}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: 11, color: '#888888', fontWeight: 600 }}>FREE MAINTENANCE END</p>
+              <p style={{ fontSize: 13, color: '#2C2C2C', fontWeight: 600 }}>{form.free_maintenance_end}</p>
+            </div>
           </div>
         )}
 
-        {error && <p className="text-red-600 text-sm">{error}</p>}
+        {error && <p style={{ color: '#8B0000', fontSize: 13 }}>{error}</p>}
 
         <div className="flex gap-3 pt-2">
           <button type="submit" disabled={saving}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50">
-            {saving ? 'Saving...' : 'Save'}
+            style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 20px', fontWeight: 600, fontSize: 14, opacity: saving ? 0.5 : 1 }}>
+            {saving ? 'Saving…' : 'Save'}
           </button>
           <button type="button" onClick={() => navigate(-1)}
-            className="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">
+            style={{ backgroundColor: '#FFFFFF', color: '#2C2C2C', padding: '8px 20px', border: '1px solid #D4AF37', fontSize: 14 }}>
             Cancel
           </button>
         </div>

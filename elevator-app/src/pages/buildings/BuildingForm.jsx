@@ -13,7 +13,7 @@ export default function BuildingForm() {
   const navigate = useNavigate()
   const isEdit = Boolean(buildingId)
 
-  const [form, setForm] = useState({ name: '', address: '', floors: '', capacity: '' })
+  const [form, setForm] = useState({ name: '', address: '', floors: '', num_elevators: '' })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -24,7 +24,7 @@ export default function BuildingForm() {
           name: data.name,
           address: data.address || '',
           floors: data.floors || '',
-          capacity: data.capacity || '',
+          num_elevators: data.num_elevators || '',
         })
       })
     }
@@ -38,7 +38,11 @@ export default function BuildingForm() {
     e.preventDefault()
     setError('')
     setSaving(true)
-    const payload = { ...form, floors: form.floors ? parseInt(form.floors) : null }
+    const payload = {
+      ...form,
+      floors: form.floors ? parseInt(form.floors) : null,
+      num_elevators: form.num_elevators ? parseInt(form.num_elevators) : null,
+    }
     const { data, error } = isEdit
       ? await updateBuilding(buildingId, payload)
       : await createBuilding({ ...payload, customer_id: customerId })
@@ -76,9 +80,10 @@ export default function BuildingForm() {
               placeholder="e.g. 20" style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>Capacity</label>
-            <input name="capacity" value={form.capacity} onChange={handleChange}
-              placeholder="e.g. 1000 kg / 13 persons" style={inputStyle} />
+            <label style={labelStyle}>Number of Elevators</label>
+            <input name="num_elevators" type="number" min="1" value={form.num_elevators} onChange={handleChange}
+              placeholder="e.g. 2" style={inputStyle} />
+            <p style={{ fontSize: 11, color: '#888888', marginTop: 4 }}>Each elevator is added separately below</p>
           </div>
         </div>
 
