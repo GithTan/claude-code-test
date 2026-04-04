@@ -285,48 +285,118 @@ export default function PipelineDetail() {
     await reload()
   }
 
+  const descLine = [
+    customerLabel !== '—' ? customerLabel : null,
+    pipeline.elevator_type?.replace(/_/g, ' '),
+    pipeline.home_elevator_type,
+    pipeline.with_structure === true ? 'with structure' : pipeline.with_structure === false ? 'no structure' : null,
+    pipeline.unit_count > 1 ? `${pipeline.unit_count} units` : null,
+  ].filter(Boolean).join(' · ')
+
   return (
     <div className="max-w-3xl mx-auto">
+
+      {/* PRINT-ONLY status summary */}
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          .print-only { display: block !important; }
+          body { background: white; }
+        }
+        .print-only { display: none; }
+      `}</style>
+
+      <div className="print-only" style={{ padding: 32, fontFamily: 'Georgia, serif' }}>
+        <p style={{ fontSize: 11, color: '#888', marginBottom: 4 }}>FIEC Elevator — Project Status Report</p>
+        <p style={{ fontSize: 11, color: '#888', marginBottom: 20 }}>Printed: {new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#2C2C2C', marginBottom: 4 }}>{projectLabel}</h1>
+        <p style={{ fontSize: 13, color: '#555', marginBottom: 16 }}>{descLine}</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C', marginBottom: 20 }}>
+          Status: {pipeline.status === 'completed' ? 'All 12 Steps Complete' : `Step ${pipeline.current_step} of 12 — ${STEP_LABELS[pipeline.current_step] || ''}`}
+        </p>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ borderBottom: '2px solid #D4AF37' }}>
+              <th style={{ textAlign: 'left', padding: '6px 8px', width: 40 }}>#</th>
+              <th style={{ textAlign: 'left', padding: '6px 8px' }}>Step</th>
+              <th style={{ textAlign: 'left', padding: '6px 8px', width: 100 }}>Status</th>
+              <th style={{ textAlign: 'left', padding: '6px 8px', width: 120 }}>Completed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {steps.map(step => {
+              const def = PIPELINE_STEPS[step.step_number - 1]
+              return (
+                <tr key={step.id} style={{ borderBottom: '1px solid #eee', backgroundColor: step.status === 'unlocked' ? '#FFFDE8' : 'transparent' }}>
+                  <td style={{ padding: '6px 8px', color: '#888' }}>{step.step_number}</td>
+                  <td style={{ padding: '6px 8px', fontWeight: step.status === 'unlocked' ? 700 : 400 }}>{def.label}</td>
+                  <td style={{ padding: '6px 8px', color: step.status === 'completed' ? '#2a7a2a' : step.status === 'unlocked' ? '#b8860b' : '#999' }}>
+                    {step.status === 'completed' ? '✓ Done' : step.status === 'unlocked' ? '→ In Progress' : '○ Pending'}
+                  </td>
+                  <td style={{ padding: '6px 8px', color: '#555' }}>
+                    {step.completed_at ? new Date(step.completed_at).toLocaleDateString('en-PH') : '—'}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+        {activity.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <p style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Activity Log</p>
+            {activity.slice(0, 10).map(a => (
+              <p key={a.id} style={{ fontSize: 12, color: '#555', marginBottom: 4 }}>
+                {new Date(a.performed_at).toLocaleDateString('en-PH')} — {a.action.replace(/_/g, ' ')}{a.notes ? `: ${a.notes}` : ''}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Header */}
-      <div className="mb-6">
-        <button onClick={() => navigate('/pipeline')} className="text-sm text-blue-600 hover:underline mb-2">
+      <div className="no-print mb-6">
+        <button onClick={() => navigate('/pipeline')} style={{ fontSize: 13, color: '#D4AF37', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginBottom: 8 }}>
           ← Back to Pipeline
         </button>
-        <h1 className="text-2xl font-bold text-gray-800">{projectLabel}</h1>
-        <p className="text-gray-500 text-sm">
-          {[
-            customerLabel !== '—' ? customerLabel : null,
-            pipeline.elevator_type?.replace(/_/g, ' '),
-            pipeline.home_elevator_type,
-            pipeline.with_structure === true ? 'with structure' : pipeline.with_structure === false ? 'no structure' : null,
-            pipeline.unit_count > 1 ? `${pipeline.unit_count} units` : null,
-          ].filter(Boolean).join(' · ')}
-        </p>
-        {role === 'admin' && pipeline.installation_projects?.contract_amount && (
-          <p className="text-sm text-gray-700 mt-1">
-            ₱{Number(pipeline.installation_projects.contract_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-            <span className="ml-2 text-xs text-gray-400">
-              {pipeline.installation_projects.vat_inclusive ? 'VAT Inclusive' : 'Non-VAT'}
-            </span>
-          </p>
-        )}
-        <div className="flex items-center gap-3 mt-2">
-          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-            pipeline.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-          }`}>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: '#2C2C2C' }}>{projectLabel}</h1>
+            <p style={{ color: '#888888', fontSize: 13, marginTop: 2 }}>{descLine}</p>
+            {role === 'admin' && pipeline.installation_projects?.contract_amount && (
+              <p style={{ fontSize: 13, color: '#2C2C2C', marginTop: 4 }}>
+                ₱{Number(pipeline.installation_projects.contract_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                <span style={{ marginLeft: 8, fontSize: 12, color: '#888888' }}>
+                  {pipeline.installation_projects.vat_inclusive ? 'VAT Inclusive' : 'Non-VAT'}
+                </span>
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => window.print()}
+              style={{ border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              Print Status
+            </button>
+            {role === 'admin' && (
+              <button onClick={() => setConfirmDelete(true)}
+                style={{ fontSize: 12, color: '#8B0000', border: '1px solid #8B0000', padding: '6px 12px', background: 'none', cursor: 'pointer' }}>
+                Delete
+              </button>
+            )}
+          </div>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <span style={{
+            display: 'inline-block', padding: '3px 10px', fontSize: 12, fontWeight: 700,
+            backgroundColor: pipeline.status === 'completed' ? '#D4AF37' : '#2C2C2C',
+            color: pipeline.status === 'completed' ? '#2C2C2C' : '#D4AF37',
+          }}>
             {pipeline.status === 'completed' ? 'Completed' : `Step ${pipeline.current_step} of 12`}
           </span>
-          {role === 'admin' && (
-            <button onClick={() => setConfirmDelete(true)}
-              className="text-xs text-red-600 border border-red-300 px-2 py-1 rounded hover:bg-red-50">
-              Delete Pipeline
-            </button>
-          )}
         </div>
       </div>
 
       {/* Steps */}
-      <div className="space-y-2">
+      <div className="no-print space-y-2">
         {steps.map(step => {
           const def = PIPELINE_STEPS[step.step_number - 1]
           const isOpen = activeForm === step.step_number
@@ -417,9 +487,27 @@ export default function PipelineDetail() {
         })}
       </div>
 
+      {/* Activity log */}
+      {activity.length > 0 && (
+        <div className="no-print mt-8">
+          <p style={{ fontSize: 14, fontWeight: 700, color: '#2C2C2C', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Activity Log</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {activity.map(a => (
+              <div key={a.id} style={{ fontSize: 13, color: '#2C2C2C', display: 'flex', gap: 12, borderBottom: '1px solid #E8E0C8', paddingBottom: 6 }}>
+                <span style={{ color: '#888888', whiteSpace: 'nowrap', minWidth: 90 }}>
+                  {new Date(a.performed_at).toLocaleDateString('en-PH')}
+                </span>
+                <span style={{ fontWeight: 600, textTransform: 'capitalize' }}>{a.action.replace(/_/g, ' ')}</span>
+                {a.notes && <span style={{ color: '#666666' }}>— {a.notes}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Boss override modal */}
       {overrideStep && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="no-print fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-96">
             <h3 className="font-bold text-gray-800 mb-2">Override Gate</h3>
             <p className="text-sm text-gray-600 mb-4">
@@ -443,12 +531,11 @@ export default function PipelineDetail() {
               </button>
             </div>
           </div>
-        </div>
       )}
 
       {/* Delete confirmation modal */}
       {confirmDelete && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+        <div className="no-print fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl p-6 w-96">
             <h3 className="font-bold text-gray-800 mb-2">Delete Pipeline?</h3>
             <p className="text-sm text-gray-600 mb-4">
@@ -468,23 +555,6 @@ export default function PipelineDetail() {
         </div>
       )}
 
-      {/* Activity log */}
-      {activity.length > 0 && (
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-700 mb-3">Activity Log</h2>
-          <div className="space-y-2">
-            {activity.map(a => (
-              <div key={a.id} className="text-sm text-gray-600 flex gap-2">
-                <span className="text-gray-400 whitespace-nowrap">
-                  {new Date(a.performed_at).toLocaleDateString('en-PH')}
-                </span>
-                <span className="font-medium capitalize">{a.action.replace(/_/g, ' ')}</span>
-                {a.notes && <span>— {a.notes}</span>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

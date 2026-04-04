@@ -25,6 +25,12 @@ function StatCard({ label, value, sublabel, highlight, to }) {
   return to ? <Link to={to}>{content}</Link> : content
 }
 
+function jobStatusDot(status) {
+  if (status === 'completed') return '#D4AF37'
+  if (status === 'in_progress') return '#2C2C2C'
+  return '#888888'
+}
+
 export default function Dashboard() {
   const { role } = useAuth()
   const isAdmin = role === 'admin'
@@ -54,23 +60,86 @@ export default function Dashboard() {
     Promise.all(fetches).then(() => setLoading(false))
   }, [isAdmin])
 
-  if (loading) return <p className="text-gray-500">Loading...</p>
+  if (loading) return <p style={{ color: '#888888' }}>Loading…</p>
 
   const today = new Date().toISOString().split('T')[0]
   const oneWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
+  const todayJobs = jobs.filter(j => j.scheduled_date === today && j.status !== 'completed')
   const inProgressToday = jobs.filter(j => j.status === 'in_progress').length
   const upcomingThisWeek = schedules.filter(s => s.next_due_date && s.next_due_date >= today && s.next_due_date <= oneWeek).length
 
   const unpaidTotal = unpaidInvoices.reduce((sum, inv) => sum + Number(inv.total_amount), 0)
   const dueThisMonth = unpaidInvoices.filter(inv => inv.due_date && inv.due_date.slice(0, 7) === today.slice(0, 7)).length
 
+  const todayDate = new Date().toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
+      {/* Today's Schedule */}
+      <div style={{ backgroundColor: '#2C2C2C', border: '1px solid #D4AF37', padding: 24, marginBottom: 24 }}>
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <p style={{ color: '#D4AF37', fontWeight: 700, fontSize: 16 }}>Today's Schedule</p>
+            <p style={{ color: '#888888', fontSize: 12, marginTop: 2 }}>{todayDate}</p>
+          </div>
+          <Link to="/jobs/new" style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '7px 14px', fontSize: 13, fontWeight: 600 }}>
+            + Log Visit
+          </Link>
+        </div>
 
+        {todayJobs.length === 0 && openBreakdowns.length === 0 ? (
+          <p style={{ color: '#888888', fontSize: 13 }}>No visits or breakdowns scheduled for today.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {/* Open breakdowns first — highest priority */}
+            {openBreakdowns.map(b => (
+              <Link key={b.id} to={`/breakdowns/${b.id}/edit`}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#3D3D3D', padding: '10px 14px', border: `1px solid ${b.priority === 'high' ? '#8B0000' : '#D4AF37'}`, textDecoration: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: b.priority === 'high' ? '#8B0000' : '#D4AF37', flexShrink: 0 }} />
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F5F5DC' }}>
+                      {b.elevators?.buildings?.customers?.name || '—'} — {b.elevators?.unit_number || '—'}
+                    </p>
+                    <p style={{ fontSize: 12, color: '#888888' }}>
+                      Breakdown · {b.technician_name || 'Unassigned'} · {b.description?.slice(0, 50) || '—'}
+                    </p>
+                  </div>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: b.priority === 'high' ? '#FF6B6B' : '#D4AF37', whiteSpace: 'nowrap' }}>
+                  {b.priority?.toUpperCase()} →
+                </span>
+              </Link>
+            ))}
+
+            {/* Today's scheduled service visits */}
+            {todayJobs.map(j => (
+              <Link key={j.id} to={`/jobs/${j.id}/edit`}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#3D3D3D', padding: '10px 14px', border: '1px solid #4D4D4D', textDecoration: 'none' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = '#D4AF37'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = '#4D4D4D'}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: jobStatusDot(j.status), flexShrink: 0 }} />
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#F5F5DC' }}>
+                      {j.elevators?.buildings?.customers?.name || '—'} — {j.elevators?.unit_number || '—'}
+                    </p>
+                    <p style={{ fontSize: 12, color: '#888888' }}>
+                      Service Visit · {j.technician_name || 'Unassigned'} · {j.maintenance_schedules?.visit_type || j.job_type || '—'}
+                    </p>
+                  </div>
+                </div>
+                <span style={{ fontSize: 12, color: '#D4AF37', fontWeight: 600 }}>View →</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Stats grid */}
       <div className="grid grid-cols-2 gap-4 mb-4 lg:grid-cols-3">
-        {/* Pipeline Overview — clickable, expands inline */}
+        {/* Pipeline Overview */}
         <button onClick={() => setShowPipelines(v => !v)}
           className="text-left shadow-sm p-6 hover:shadow-md transition-shadow"
           style={{ backgroundColor: '#2C2C2C', border: '1px solid #D4AF37' }}>
@@ -82,9 +151,9 @@ export default function Dashboard() {
         </button>
 
         <StatCard label="Overdue Maintenance" value={overdue.length}
-          sublabel={overdue.length > 0 ? 'Needs attention' : 'All up to date'} to="/maintenance" />
+          sublabel={overdue.length > 0 ? 'Needs attention' : 'All up to date'} to="/reports" />
         <StatCard label="Upcoming This Week" value={upcomingThisWeek}
-          sublabel="Scheduled visits" to="/maintenance" />
+          sublabel="Scheduled visits" to="/jobs" />
         <StatCard label="Jobs In Progress" value={inProgressToday}
           sublabel="Currently active" to="/jobs" />
         <StatCard label="Open Breakdowns" value={openBreakdowns.length}
@@ -100,52 +169,42 @@ export default function Dashboard() {
 
       {/* Pipeline Overview Panel */}
       {showPipelines && (
-        <div className="shadow-sm p-6 mb-6" style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37' }}>
+        <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24, marginBottom: 24 }}>
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-base font-semibold" style={{ color: '#2C2C2C' }}>Active Projects</h2>
-            <Link to="/pipeline" className="text-xs hover:underline" style={{ color: '#D4AF37' }}>Manage in Pipeline →</Link>
+            <p style={{ fontWeight: 700, fontSize: 15, color: '#2C2C2C' }}>Active Projects</p>
+            <Link to="/pipeline" style={{ fontSize: 13, color: '#D4AF37', fontWeight: 600 }}>Manage in Pipeline →</Link>
           </div>
           {pipelines.length === 0 ? (
-            <p className="text-sm text-gray-400">No active projects.</p>
+            <p style={{ color: '#888888', fontSize: 13 }}>No active projects.</p>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div>
               {pipelines.map(p => {
                 const currentStep = p.pipeline_steps?.find(s => s.step_number === p.current_step)
                 const days = currentStep?.unlocked_at
                   ? Math.floor((Date.now() - new Date(currentStep.unlocked_at)) / 86400000)
                   : 0
-                const isOverdue = days >= 7
-                const isWaiting = days >= 3
+                const dotColor = days >= 7 ? '#8B0000' : days >= 3 ? '#D4AF37' : '#4CAF50'
 
                 return (
                   <Link key={p.id} to={`/pipeline/${p.id}`}
-                    className="flex items-center justify-between py-3 hover:bg-gray-50 px-2 -mx-2 rounded transition-colors">
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">
-                        {p.installation_projects?.project_name || '—'}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5 capitalize">
-                        {[
-                          p.elevator_type?.replace(/_/g, ' '),
-                          p.unit_count > 1 ? `${p.unit_count} units` : null,
-                        ].filter(Boolean).join(' · ')}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs font-semibold text-gray-700">
-                        Step {p.current_step} of {PIPELINE_STEPS.length}
-                      </p>
-                      <p className="text-xs text-gray-500">{STEP_LABELS[p.current_step] || 'Complete'}</p>
-                      {days >= 3 && (
-                        <p className={`text-xs font-semibold mt-0.5 ${isOverdue ? 'text-red-600' : 'text-yellow-600'}`}>
-                          {days}d waiting
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #E8E0C8', textDecoration: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: dotColor, flexShrink: 0 }} />
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>
+                          {p.installation_projects?.project_name || '—'}
                         </p>
-                      )}
+                        <p style={{ fontSize: 12, color: '#888888', textTransform: 'capitalize' }}>
+                          {[p.elevator_type?.replace(/_/g, ' '), p.unit_count > 1 ? `${p.unit_count} units` : null].filter(Boolean).join(' · ')}
+                        </p>
+                      </div>
                     </div>
-                    <div className="ml-4">
-                      <span className={`inline-block w-2.5 h-2.5 rounded-full ${
-                        isOverdue ? 'bg-red-500' : isWaiting ? 'bg-yellow-400' : 'bg-green-400'
-                      }`} />
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: 12, fontWeight: 700, color: '#2C2C2C' }}>Step {p.current_step} of {PIPELINE_STEPS.length}</p>
+                      <p style={{ fontSize: 12, color: '#888888' }}>{STEP_LABELS[p.current_step] || 'Complete'}</p>
+                      {days >= 3 && (
+                        <p style={{ fontSize: 12, fontWeight: 700, color: dotColor }}>{days}d waiting</p>
+                      )}
                     </div>
                   </Link>
                 )
@@ -156,68 +215,29 @@ export default function Dashboard() {
       )}
 
       {isAdmin && dueThisMonth > 0 && (
-        <div className="p-4 mb-6" style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37' }}>
-          <p className="font-medium text-sm" style={{ color: '#2C2C2C' }}>
-            {dueThisMonth} invoice{dueThisMonth !== 1 ? 's' : ''} due this month
+        <div style={{ padding: 16, marginBottom: 16, backgroundColor: '#F5F5DC', border: '1px solid #D4AF37' }}>
+          <p style={{ fontWeight: 600, fontSize: 13, color: '#2C2C2C' }}>
+            {dueThisMonth} invoice{dueThisMonth !== 1 ? 's' : ''} due this month —{' '}
+            <Link to="/finance" style={{ color: '#D4AF37' }}>Review in Finance →</Link>
           </p>
         </div>
       )}
 
-      {openBreakdowns.length > 0 && (
-        <div className="shadow-sm p-6 mb-6" style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37' }}>
-          <h2 className="text-base font-semibold mb-3" style={{ color: '#2C2C2C' }}>Breakdown Calls</h2>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Elevator</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Priority</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {openBreakdowns.slice(0, 5).map(b => (
-                <tr key={b.id} className="text-sm">
-                  <td className="py-2 text-gray-900">{b.reported_date}</td>
-                  <td className="py-2 text-gray-600">{b.elevators?.buildings?.customers?.name}</td>
-                  <td className="py-2 font-medium text-gray-900">{b.elevators?.unit_number}</td>
-                  <td className="py-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${b.priority === 'high' ? 'bg-red-100 text-red-800' : b.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-700'}`}>
-                      {b.priority}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <Link to="/breakdowns" className="text-blue-600 hover:underline text-sm mt-2 block">
-            View all breakdowns →
-          </Link>
-        </div>
-      )}
-
       {overdue.length > 0 && (
-        <div className="shadow-sm p-6 mb-6" style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37' }}>
-          <h2 className="text-base font-semibold mb-3" style={{ color: '#2C2C2C' }}>Overdue Maintenance</h2>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Elevator</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase">Due Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
+        <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24, marginBottom: 16 }}>
+          <p style={{ fontWeight: 700, fontSize: 14, color: '#2C2C2C', marginBottom: 12 }}>Overdue Maintenance</p>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <tbody>
               {overdue.slice(0, 5).map(s => (
-                <tr key={s.id} className="text-sm">
-                  <td className="py-2 text-gray-900">{s.elevators?.buildings?.customers?.name}</td>
-                  <td className="py-2 font-medium text-gray-900">{s.elevators?.unit_number}</td>
-                  <td className="py-2 text-red-600 font-medium">{s.next_due_date}</td>
+                <tr key={s.id} style={{ borderBottom: '1px solid #E8E0C8' }}>
+                  <td style={{ padding: '8px 0', fontSize: 13, color: '#2C2C2C' }}>{s.elevators?.buildings?.customers?.name}</td>
+                  <td style={{ padding: '8px 0', fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{s.elevators?.unit_number}</td>
+                  <td style={{ padding: '8px 0', fontSize: 13, fontWeight: 700, color: '#8B0000', textAlign: 'right' }}>{s.next_due_date}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <Link to="/maintenance" className="text-blue-600 hover:underline text-sm mt-2 block">
+          <Link to="/reports" style={{ fontSize: 13, color: '#D4AF37', fontWeight: 600, marginTop: 8, display: 'block' }}>
             View all overdue →
           </Link>
         </div>
