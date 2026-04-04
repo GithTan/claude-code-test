@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   getProjects, createPipeline, createPipelineSteps, logActivity,
-  PROJECT_TYPES,
+  createProject, getCustomers, PROJECT_TYPES,
 } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -19,9 +19,40 @@ export default function PipelineForm() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
+  // New project inline form
+  const [showNewProject, setShowNewProject] = useState(false)
+  const [customers, setCustomers] = useState([])
+  const [newProject, setNewProject] = useState({ project_name: '', customer_id: '' })
+  const [savingProject, setSavingProject] = useState(false)
+
+  async function loadProjects() {
+    const { data } = await getProjects()
+    setProjects(data || [])
+  }
+
   useEffect(() => {
-    getProjects().then(({ data }) => setProjects(data || []))
+    loadProjects()
   }, [])
+
+  async function handleAddProject() {
+    if (!newProject.project_name.trim() || !newProject.customer_id) return
+    setSavingProject(true)
+    const { data, error: pErr } = await createProject({ ...newProject, status: 'active' })
+    if (pErr) { setSavingProject(false); return }
+    await loadProjects()
+    setForm(f => ({ ...f, project_id: data.id }))
+    setNewProject({ project_name: '', customer_id: '' })
+    setShowNewProject(false)
+    setSavingProject(false)
+  }
+
+  async function handleShowNewProject() {
+    setShowNewProject(true)
+    if (customers.length === 0) {
+      const { data } = await getCustomers()
+      setCustomers(data || [])
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -32,7 +63,7 @@ export default function PipelineForm() {
     setSaving(true)
     const { data: pipeline, error: pErr } = await createPipeline({
       ...form,
-      created_by: user.id,
+      created_by: user?.id,
     })
     if (pErr) { setError(pErr.message); setSaving(false); return }
 
@@ -55,9 +86,49 @@ export default function PipelineForm() {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Installation Project
-          </label>
+          <div className="flex justify-between items-center mb-1">
+            <label className="block text-sm font-medium text-gray-700">
+              Installation Project
+            </label>
+            <button type="button" onClick={handleShowNewProject}
+              className="text-xs text-blue-600 hover:underline">
+              + Add New Project
+            </button>
+          </div>
+
+          {showNewProject && (
+            <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+              <p className="text-xs font-medium text-blue-800">New Installation Project</p>
+              <input
+                type="text"
+                placeholder="Project name (e.g. SM Aura Tower - 2 Units)"
+                value={newProject.project_name}
+                onChange={e => setNewProject(n => ({ ...n, project_name: e.target.value }))}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              />
+              <select
+                value={newProject.customer_id}
+                onChange={e => setNewProject(n => ({ ...n, customer_id: e.target.value }))}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+              >
+                <option value="">Select customer…</option>
+                {customers.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <button type="button" onClick={handleAddProject} disabled={savingProject}
+                  className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 disabled:opacity-50">
+                  {savingProject ? 'Saving…' : 'Save Project'}
+                </button>
+                <button type="button" onClick={() => setShowNewProject(false)}
+                  className="text-gray-500 px-3 py-1 rounded text-xs border border-gray-300 hover:bg-gray-50">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           <select
             value={form.project_id}
             onChange={e => setForm(f => ({ ...f, project_id: e.target.value }))}

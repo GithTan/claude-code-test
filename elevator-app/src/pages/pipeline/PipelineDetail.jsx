@@ -6,6 +6,7 @@ import {
   overrideGate, uploadPipelineFile, logActivity, getPipelineActivity,
   PIPELINE_STEPS,
 } from '../../lib/api'
+import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 
 const STEP_LABELS = Object.fromEntries(PIPELINE_STEPS.map(s => [s.number, s.label]))
@@ -191,9 +192,17 @@ export default function PipelineDetail() {
   const [pipeline, setPipeline] = useState(null)
   const [activity, setActivity] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeForm, setActiveForm] = useState(null) // step_number of open form
+  const [activeForm, setActiveForm] = useState(null)
   const [overrideStep, setOverrideStep] = useState(null)
   const [overrideReason, setOverrideReason] = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete() {
+    setDeleting(true)
+    await supabase.from('pipelines').delete().eq('id', id)
+    navigate('/pipeline')
+  }
 
   async function reload() {
     const [{ data: p }, { data: a }] = await Promise.all([
@@ -232,11 +241,19 @@ export default function PipelineDetail() {
         </button>
         <h1 className="text-2xl font-bold text-gray-800">{projectLabel}</h1>
         <p className="text-gray-500 text-sm">{customerLabel} · {pipeline.supplier} · {pipeline.project_type.replace(/_/g, ' ')}</p>
-        <span className={`inline-block mt-2 px-2 py-1 rounded-full text-xs font-medium ${
-          pipeline.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-        }`}>
-          {pipeline.status === 'completed' ? 'Completed' : `Step ${pipeline.current_step} of 12`}
-        </span>
+        <div className="flex items-center gap-3 mt-2">
+          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+            pipeline.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+          }`}>
+            {pipeline.status === 'completed' ? 'Completed' : `Step ${pipeline.current_step} of 12`}
+          </span>
+          {role === 'admin' && (
+            <button onClick={() => setConfirmDelete(true)}
+              className="text-xs text-red-600 border border-red-300 px-2 py-1 rounded hover:bg-red-50">
+              Delete Pipeline
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Steps */}
@@ -324,6 +341,28 @@ export default function PipelineDetail() {
                 Override & Unlock
               </button>
               <button onClick={() => { setOverrideStep(null); setOverrideReason('') }}
+                className="text-gray-600 px-4 py-2 rounded text-sm border border-gray-300 hover:bg-gray-50">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-96">
+            <h3 className="font-bold text-gray-800 mb-2">Delete Pipeline?</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              This will permanently delete <strong>{projectLabel}</strong> and all its steps, attachments, and activity logs. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={handleDelete} disabled={deleting}
+                className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 disabled:opacity-50">
+                {deleting ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+              <button onClick={() => setConfirmDelete(false)}
                 className="text-gray-600 px-4 py-2 rounded text-sm border border-gray-300 hover:bg-gray-50">
                 Cancel
               </button>
