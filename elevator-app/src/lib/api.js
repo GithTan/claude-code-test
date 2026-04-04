@@ -1,5 +1,37 @@
 import { supabase } from './supabase'
 
+// ─── Direct REST fetch (bypasses Supabase JS session lock) ───────────────────
+const _url = import.meta.env.VITE_SUPABASE_URL
+const _key = import.meta.env.VITE_SUPABASE_ANON_KEY
+let _tok = _key
+
+export function _setAuthToken(token) { _tok = token || _key }
+
+function rest(path, opts = {}) {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 12000)
+  const headers = {
+    apikey: _key,
+    Authorization: `Bearer ${_tok}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+    ...opts.headers,
+  }
+  return fetch(`${_url}/rest/v1${path}`, { ...opts, headers, signal: ctrl.signal })
+    .then(async r => {
+      clearTimeout(timer)
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({ message: r.statusText }))
+        return { data: null, error: e }
+      }
+      return { data: await r.json(), error: null }
+    })
+    .catch(e => {
+      clearTimeout(timer)
+      return { data: null, error: { message: e.name === 'AbortError' ? 'Request timed out' : e.message } }
+    })
+}
+
 // Customers
 export async function getCustomers() {
   return supabase.from('customers').select('*').order('name')
@@ -117,20 +149,19 @@ export async function deletePayment(id) {
 
 // Installation Projects
 export async function getProjects() {
-  return supabase
-    .from('installation_projects')
-    .select('*, customers(name)')
-    .order('created_at', { ascending: false })
+  return rest('/installation_projects?select=*,customers(name)&order=created_at.desc')
 }
 export async function getProject(id) {
-  return supabase
-    .from('installation_projects')
-    .select('*, customers(name), payment_milestones(*)')
-    .eq('id', id)
-    .single()
+  const { data, error } = await rest(`/installation_projects?select=*,customers(name),payment_milestones(*)&id=eq.${id}`)
+  if (error) return { data: null, error }
+  return { data: Array.isArray(data) ? data[0] ?? null : data, error: null }
 }
 export async function createProject(data) {
-  return supabase.from('installation_projects').insert(data).select().single()
+  const { data: rows, error } = await rest('/installation_projects', {
+    method: 'POST', body: JSON.stringify(data),
+  })
+  if (error) return { data: null, error }
+  return { data: Array.isArray(rows) ? rows[0] : rows, error: null }
 }
 export async function updateProject(id, data) {
   return supabase.from('installation_projects').update(data).eq('id', id).select().single()
@@ -294,22 +325,25 @@ export const PIPELINE_STAGES = [
 ]
 
 export async function getPipelines() {
-  return supabase
-    .from('pipelines')
-    .select('id, project_type, supplier, current_step, status')
-    .order('created_at', { ascending: false })
+  return rest('/pipelines?select=id,project_type,elevator_type,home_elevator_type,with_structure,unit_count,current_step,status,installation_projects(project_name,customers(name)),pipeline_steps(id,step_number,status,unlocked_at)&order=created_at.desc')
 }
 
 export async function getPipeline(id) {
-  return supabase
-    .from('pipelines')
-    .select('*, installation_projects(project_name, customers(name)), pipeline_steps(*, pipeline_attachments(*))')
-    .eq('id', id)
-    .single()
+  const { data, error } = await rest(
+    `/pipelines?select=*,installation_projects(project_name,customers(name)),pipeline_steps(*,pipeline_attachments(*))&id=eq.${id}`
+  )
+  if (error) return { data: null, error }
+  return { data: Array.isArray(data) ? data[0] ?? null : data, error: null }
 }
 
 export async function createPipeline(data) {
-  return supabase.from('pipelines').insert(data).select().single()
+  const { data: rows, error } = await rest('/pipelines', {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: { Prefer: 'return=representation' },
+  })
+  if (error) return { data: null, error }
+  return { data: Array.isArray(rows) ? rows[0] : rows, error: null }
 }
 
 export async function createPipelineSteps(pipelineId) {
@@ -320,83 +354,63 @@ export async function createPipelineSteps(pipelineId) {
     assigned_role: s.role,
     unlocked_at: s.number === 1 ? new Date().toISOString() : null,
   }))
-  return supabase.from('pipeline_steps').insert(steps).select()
-}
-
-export async function updatePipelineStep(stepId, updates) {
-  return supabase.from('pipeline_steps').update(updates).eq('id', stepId).select().single()
+  return rest('/pipeline_steps', { method: 'POST', body: JSON.stringify(steps) })
 }
 
 export async function completeStep(stepId, { notes, data }) {
-  return supabase
-    .from('pipeline_steps')
-    .update({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      notes,
-      data,
-    })
-    .eq('id', stepId)
-    .select()
-    .single()
+  return rest(`/pipeline_steps?id=eq.${stepId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'completed', completed_at: new Date().toISOString(), notes, data }),
+  })
 }
 
 export async function unlockNextStep(pipelineId, nextStepNumber) {
-  return supabase
-    .from('pipeline_steps')
-    .update({ status: 'unlocked', unlocked_at: new Date().toISOString() })
-    .eq('pipeline_id', pipelineId)
-    .eq('step_number', nextStepNumber)
-    .select()
-    .single()
+  return rest(`/pipeline_steps?pipeline_id=eq.${pipelineId}&step_number=eq.${nextStepNumber}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'unlocked', unlocked_at: new Date().toISOString() }),
+  })
 }
 
 export async function updatePipelineCurrentStep(pipelineId, stepNumber) {
   const updates = { current_step: stepNumber, updated_at: new Date().toISOString() }
   if (stepNumber > PIPELINE_STEPS.length) updates.status = 'completed'
-  return supabase.from('pipelines').update(updates).eq('id', pipelineId).select().single()
+  return rest(`/pipelines?id=eq.${pipelineId}`, { method: 'PATCH', body: JSON.stringify(updates) })
 }
 
 export async function overrideGate(pipelineId, stepId, reason) {
-  const { error } = await supabase
-    .from('pipeline_steps')
-    .update({ status: 'unlocked', unlocked_at: new Date().toISOString() })
-    .eq('id', stepId)
+  const { error } = await rest(`/pipeline_steps?id=eq.${stepId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'unlocked', unlocked_at: new Date().toISOString() }),
+  })
   if (error) return { data: null, error }
   return logActivity(pipelineId, stepId, 'gate_overridden', reason, {})
 }
 
 export async function logActivity(pipelineId, stepId, action, notes, metadata) {
-  return supabase.from('pipeline_activity_log').insert({
-    pipeline_id: pipelineId,
-    pipeline_step_id: stepId,
-    action,
-    notes,
-    metadata,
-  }).select().single()
+  return rest('/pipeline_activity_log', {
+    method: 'POST',
+    body: JSON.stringify({ pipeline_id: pipelineId, pipeline_step_id: stepId, action, notes, metadata }),
+  })
 }
 
 export async function getPipelineActivity(pipelineId) {
-  return supabase
-    .from('pipeline_activity_log')
-    .select('*')
-    .eq('pipeline_id', pipelineId)
-    .order('performed_at', { ascending: false })
+  return rest(`/pipeline_activity_log?pipeline_id=eq.${pipelineId}&order=performed_at.desc`)
 }
 
 export async function uploadPipelineFile(stepId, file) {
   const path = `${stepId}/${Date.now()}-${file.name}`
-  const { data, error } = await supabase.storage
-    .from('pipeline-files')
-    .upload(path, file)
+  const { data, error } = await supabase.storage.from('pipeline-files').upload(path, file)
   if (error) return { data: null, error }
-  return supabase.from('pipeline_attachments').insert({
-    pipeline_step_id: stepId,
-    file_name: file.name,
-    file_path: path,
-  }).select().single()
+  return rest('/pipeline_attachments', {
+    method: 'POST',
+    body: JSON.stringify({ pipeline_step_id: stepId, file_name: file.name, file_path: path }),
+  })
 }
 
 export async function getPipelineFileUrl(filePath) {
   return supabase.storage.from('pipeline-files').createSignedUrl(filePath, 3600)
+}
+
+export async function deletePipeline(id) {
+  return rest(`/pipelines?id=eq.${id}`, { method: 'DELETE', headers: { Prefer: '' } })
 }

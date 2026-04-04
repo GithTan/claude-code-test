@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { _setAuthToken } from '../lib/api'
 
 const AuthContext = createContext({})
 
@@ -9,23 +10,24 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   async function loadProfile(userId) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('role, full_name')
       .eq('id', userId)
       .single()
-    if (data) {
-      setRole(data.role)
-    } else {
+    if (error || !data) {
       await supabase.auth.signOut()
+    } else {
+      setRole(data.role)
     }
   }
 
   useEffect(() => {
     const timeout = setTimeout(() => setLoading(false), 5000)
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       clearTimeout(timeout)
       setUser(session?.user ?? null)
+      _setAuthToken(session?.access_token ?? null)
       if (session?.user) {
         loadProfile(session.user.id).finally(() => setLoading(false))
       } else {
@@ -36,6 +38,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setUser(session?.user ?? null)
+        _setAuthToken(session?.access_token ?? null)
         if (session?.user) {
           await loadProfile(session.user.id)
         } else {
@@ -49,6 +52,7 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function signOut() {
+    _setAuthToken(null)
     await supabase.auth.signOut()
   }
 

@@ -1,10 +1,14 @@
 // elevator-app/src/pages/pipeline/PipelineList.jsx
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getPipelines, PIPELINE_STAGES, PIPELINE_STEPS, PROJECT_TYPES } from '../../lib/api'
+import { getPipelines, PIPELINE_STAGES, PIPELINE_STEPS } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 
-const PROJECT_TYPE_LABELS = Object.fromEntries(PROJECT_TYPES.map(t => [t.value, t.label]))
+const ELEVATOR_TYPES = [
+  { value: 'passenger', label: 'Passenger Elevator' },
+  { value: 'home_elevator', label: 'Home Elevator' },
+  { value: 'escalator', label: 'Escalator' },
+]
 const STEP_LABELS = Object.fromEntries(PIPELINE_STEPS.map(s => [s.number, s.label]))
 const STEP_ROLES = Object.fromEntries(PIPELINE_STEPS.map(s => [s.number, s.role]))
 
@@ -93,7 +97,7 @@ export default function PipelineList() {
   if (fetchError) return <p className="text-red-600 p-4">Error: {fetchError}</p>
 
   const active = pipelines.filter(p => p.status !== 'completed')
-  const filtered = filterType === 'all' ? active : active.filter(p => p.project_type === filterType)
+  const filtered = filterType === 'all' ? active : active.filter(p => p.elevator_type === filterType)
 
   const completed = pipelines.filter(p => p.status === 'completed')
 
@@ -112,7 +116,7 @@ export default function PipelineList() {
           <select value={filterType} onChange={e => setFilterType(e.target.value)}
             className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="all">All Types</option>
-            {PROJECT_TYPES.map(t => (
+            {ELEVATOR_TYPES.map(t => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
@@ -177,8 +181,8 @@ export default function PipelineList() {
             {completed.map(p => (
               <Link key={p.id} to={`/pipeline/${p.id}`}
                 className="block border border-green-200 bg-green-50 rounded-lg p-3 hover:shadow-sm">
-                <p className="font-semibold text-gray-800 text-sm">{p.installation_projects?.name}</p>
-                <p className="text-xs text-green-700 font-medium mt-1">All 12 steps complete</p>
+                <p className="font-semibold text-gray-800 text-sm">{p.installation_projects?.project_name || '—'}</p>
+                <p className="text-xs text-green-700 font-medium mt-1">All {PIPELINE_STEPS.length} steps complete</p>
               </Link>
             ))}
           </div>

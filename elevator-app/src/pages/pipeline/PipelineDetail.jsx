@@ -4,9 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   getPipeline, completeStep, unlockNextStep, updatePipelineCurrentStep,
   overrideGate, uploadPipelineFile, logActivity, getPipelineActivity,
-  PIPELINE_STEPS,
+  PIPELINE_STEPS, deletePipeline,
 } from '../../lib/api'
-import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 
 const STEP_LABELS = Object.fromEntries(PIPELINE_STEPS.map(s => [s.number, s.label]))
@@ -92,11 +91,11 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel }) {
 
     // Unlock next step (if not last)
     const nextNum = step.step_number + 1
-    if (nextNum <= 12) {
+    if (nextNum <= PIPELINE_STEPS.length) {
       await unlockNextStep(pipeline.id, nextNum)
       await updatePipelineCurrentStep(pipeline.id, nextNum)
     } else {
-      await updatePipelineCurrentStep(pipeline.id, 13) // marks complete
+      await updatePipelineCurrentStep(pipeline.id, PIPELINE_STEPS.length + 1)
     }
 
     await logActivity(pipeline.id, step.id, 'step_completed', notes, data)
@@ -200,7 +199,7 @@ export default function PipelineDetail() {
 
   async function handleDelete() {
     setDeleting(true)
-    await supabase.from('pipelines').delete().eq('id', id)
+    await deletePipeline(id)
     navigate('/pipeline')
   }
 
