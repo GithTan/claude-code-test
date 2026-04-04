@@ -9,6 +9,7 @@ const navItems = [
   { label: 'Maintenance', to: '/maintenance' },
   { label: 'Jobs', to: '/jobs' },
   { label: 'Breakdowns', to: '/breakdowns' },
+  { label: 'Pipeline', to: '/pipeline' },
   { label: 'Invoices', to: '/invoices', adminOnly: true },
   { label: 'Projects', to: '/projects', adminOnly: true },
   { label: 'Reports', to: '/reports' },

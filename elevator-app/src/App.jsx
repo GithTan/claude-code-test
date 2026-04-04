@@ -28,6 +28,9 @@ import AmcForm from './pages/contracts/AmcForm'
 import AmcDetail from './pages/contracts/AmcDetail'
 import BreakdownList from './pages/breakdowns/BreakdownList'
 import BreakdownForm from './pages/breakdowns/BreakdownForm'
+import PipelineList from './pages/pipeline/PipelineList'
+import PipelineDetail from './pages/pipeline/PipelineDetail'
+import PipelineForm from './pages/pipeline/PipelineForm'
 
 function ProtectedLayout() {
   return (
@@ -78,6 +81,9 @@ function AppRoutes() {
         <Route path="/breakdowns" element={<BreakdownList />} />
         <Route path="/breakdowns/new" element={<BreakdownForm />} />
         <Route path="/breakdowns/:id/edit" element={<BreakdownForm />} />
+        <Route path="/pipeline" element={<PipelineList />} />
+        <Route path="/pipeline/new" element={<PrivateRoute adminOnly><PipelineForm /></PrivateRoute>} />
+        <Route path="/pipeline/:id" element={<PipelineDetail />} />
         <Route path="/invoices" element={<PrivateRoute adminOnly><InvoiceList /></PrivateRoute>} />
         <Route path="/invoices/new" element={<PrivateRoute adminOnly><InvoiceForm /></PrivateRoute>} />
         <Route path="/invoices/:id" element={<PrivateRoute adminOnly><InvoiceDetail /></PrivateRoute>} />
