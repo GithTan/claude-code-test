@@ -66,7 +66,7 @@ export default function AmcList() {
               <tr>
                 <th style={thStyle}>Contract Name</th>
                 <th style={thStyle}>Customer</th>
-                {isAdmin && <th style={thStyle}>Contact</th>}
+                <th style={thStyle}>Contact</th>
                 <th style={thStyle}>Type</th>
                 <th style={thStyle}>Period</th>
                 <th style={thStyle}>Billing</th>
@@ -82,15 +82,17 @@ export default function AmcList() {
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FFFFFF'}>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{c.contract_number || '—'}</td>
                   <td style={tdStyle}>{c.customers?.name || '—'}</td>
-                  {isAdmin && (
-                    <td style={tdStyle}>
-                      {c.contact_name && <p style={{ fontSize: 13 }}>{c.contact_name}</p>}
-                      {c.contact_number
+                  <td style={tdStyle}>
+                    {c.contact_name
+                      ? <p style={{ fontSize: 13 }}>{c.contact_name}</p>
+                      : <p style={{ fontSize: 13, color: '#CCCCCC' }}>—</p>
+                    }
+                    {isAdmin && (
+                      c.contact_number
                         ? <p style={{ fontSize: 12, color: '#D4AF37', fontWeight: 600 }}>{c.contact_number}</p>
                         : <p style={{ fontSize: 12, color: '#CCCCCC' }}>—</p>
-                      }
-                    </td>
-                  )}
+                    )}
+                  </td>
                   <td style={{ ...tdStyle, textTransform: 'capitalize' }}>{c.contract_type?.replace(/_/g, ' ')}</td>
                   <td style={tdStyle}>
                     <p style={{ fontSize: 12 }}>{c.start_date}</p>
