@@ -16,6 +16,7 @@ const EMPTY = {
   status: 'awaiting_shaft_readiness', concerns: '', stall_reason: '',
   qa_pre_install: false, qa_mid: false, qa_pre_handover: false,
   qa_pre_install_date: '', qa_mid_date: '', qa_pre_handover_date: '',
+  maintenance_start_date: '', maintenance_end_date: '', renewal_negotiation_status: 'none',
 }
 
 function QARow({ label, checked, date, onCheck, onDate }) {
@@ -69,6 +70,9 @@ export default function OperationsForm() {
           status: data.status || 'awaiting_shaft_readiness',
           concerns: data.concerns || '',
           stall_reason: data.stall_reason || '',
+          maintenance_start_date: data.maintenance_start_date || '',
+          maintenance_end_date: data.maintenance_end_date || '',
+          renewal_negotiation_status: data.renewal_negotiation_status || 'none',
           qa_pre_install: data.qa_pre_install || false,
           qa_mid: data.qa_mid || false,
           qa_pre_handover: data.qa_pre_handover || false,
@@ -243,6 +247,39 @@ export default function OperationsForm() {
             onCheck={() => set('qa_pre_handover', !form.qa_pre_handover)}
             onDate={v => set('qa_pre_handover_date', v)}
           />
+        </div>
+
+        {/* Warranty / Maintenance */}
+        <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Warranty & Maintenance</p>
+          <p style={{ fontSize: 12, color: '#888888', marginBottom: 16 }}>Set dates to activate 7-day expiry alert and 10-day renewal follow-up.</p>
+
+          <div className="grid grid-cols-2 gap-4" style={{ marginBottom: 12 }}>
+            <div>
+              <label style={labelStyle}>Warranty Start Date</label>
+              <input type="date" name="maintenance_start_date" value={form.maintenance_start_date} onChange={handleChange} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Warranty End Date</label>
+              <input type="date" name="maintenance_end_date" value={form.maintenance_end_date} onChange={handleChange} style={inputStyle} />
+              {form.maintenance_end_date && (() => {
+                const days = Math.ceil((new Date(form.maintenance_end_date) - Date.now()) / 86400000)
+                if (days <= 0) return <p style={{ fontSize: 11, color: '#8B0000', marginTop: 4 }}>Expired {Math.abs(days)} days ago</p>
+                if (days <= 7) return <p style={{ fontSize: 11, color: '#8B4500', marginTop: 4 }}>Expires in {days} days</p>
+                return <p style={{ fontSize: 11, color: '#888888', marginTop: 4 }}>{days} days remaining</p>
+              })()}
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Renewal Status</label>
+            <select name="renewal_negotiation_status" value={form.renewal_negotiation_status} onChange={handleChange} style={inputStyle}>
+              <option value="none">None / Not started</option>
+              <option value="in_negotiation">In Negotiation</option>
+              <option value="paid">Paid / Renewed</option>
+              <option value="lost">Lost</option>
+            </select>
+          </div>
         </div>
 
         {error && <p style={{ color: '#8B0000', fontSize: 13 }}>{error}</p>}

@@ -49,6 +49,8 @@ function isNew(createdAt) {
 export default function OperationsList() {
   const [projects, setProjects] = useState([])
   const [filter, setFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const [picFilter, setPicFilter] = useState('all')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -57,10 +59,28 @@ export default function OperationsList() {
 
   if (loading) return <p style={{ color: '#888888' }}>Loading…</p>
 
-  const filtered = filter === 'all' ? projects : projects.filter(p => p.status === filter)
   const activeCount = projects.filter(p => p.status !== 'handed_over').length
   const handedOverCount = projects.filter(p => p.status === 'handed_over').length
-  const stalledCount = projects.filter(p => p.status === 'awaiting_power').length
+
+  // Unique PICs for filter dropdown
+  const pics = ['all', ...new Set(projects.map(p => p.pic).filter(Boolean).sort())]
+
+  const filtered = projects
+    .filter(p => filter === 'all' || p.status === filter)
+    .filter(p => picFilter === 'all' || p.pic === picFilter)
+    .filter(p => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return (
+        p.project_name?.toLowerCase().includes(q) ||
+        p.address?.toLowerCase().includes(q) ||
+        p.pic?.toLowerCase().includes(q) ||
+        p.subcon?.toLowerCase().includes(q) ||
+        p.contact_person?.toLowerCase().includes(q) ||
+        p.concerns?.toLowerCase().includes(q) ||
+        p.next_action?.toLowerCase().includes(q)
+      )
+    })
 
   return (
     <div>
@@ -71,9 +91,29 @@ export default function OperationsList() {
           + Add Project
         </Link>
       </div>
-      <p className="text-sm mb-5" style={{ color: '#888888' }}>
+      <p className="text-sm mb-4" style={{ color: '#888888' }}>
         All ongoing projects — from production and delivery through installation, T&C, and handover.
       </p>
+
+      {/* Search + PIC filter */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search project name, address, contact, concerns…"
+          style={{ flex: 1, border: '1px solid #D4AF37', backgroundColor: '#FFFFFF', color: '#2C2C2C', padding: '8px 12px', fontSize: 13, outline: 'none' }}
+        />
+        <select value={picFilter} onChange={e => setPicFilter(e.target.value)}
+          style={{ border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '8px 12px', fontSize: 13 }}>
+          {pics.map(p => <option key={p} value={p}>{p === 'all' ? 'All PICs' : p}</option>)}
+        </select>
+        {(search || picFilter !== 'all' || filter !== 'all') && (
+          <button onClick={() => { setSearch(''); setPicFilter('all'); setFilter('all') }}
+            style={{ border: '1px solid #D4AF37', backgroundColor: '#FFFFFF', color: '#888888', padding: '8px 12px', fontSize: 12, cursor: 'pointer' }}>
+            Clear
+          </button>
+        )}
+      </div>
 
       {/* Quick stats */}
       <div className="flex gap-3 mb-5 flex-wrap">
