@@ -11,7 +11,8 @@ const labelStyle = { display: 'block', fontSize: 13, fontWeight: 600, color: '#2
 
 const EMPTY = {
   project_name: '', pic: '', address: '', specs: '', unit_label: '', s_o_f: '',
-  subcon: '', status: 'mechanical_installation', concerns: '', stall_reason: '',
+  subcon: '', contact_person: '', contact_number: '',
+  status: 'awaiting_shaft_readiness', concerns: '', stall_reason: '',
   qa_pre_install: false, qa_mid: false, qa_pre_handover: false,
   qa_pre_install_date: '', qa_mid_date: '', qa_pre_handover_date: '',
 }
@@ -60,7 +61,9 @@ export default function OperationsForm() {
           unit_label: data.unit_label || '',
           s_o_f: data.s_o_f || '',
           subcon: data.subcon || '',
-          status: data.status || 'mechanical_installation',
+          contact_person: data.contact_person || '',
+          contact_number: data.contact_number || '',
+          status: data.status || 'awaiting_shaft_readiness',
           concerns: data.concerns || '',
           stall_reason: data.stall_reason || '',
           qa_pre_install: data.qa_pre_install || false,
@@ -104,7 +107,7 @@ export default function OperationsForm() {
 
   return (
     <div style={{ maxWidth: 640 }}>
-      <Link to="/operations" style={{ fontSize: 13, color: '#D4AF37', fontWeight: 600 }}>← Operations</Link>
+      <Link to="/operations" style={{ fontSize: 13, color: '#D4AF37', fontWeight: 600 }}>← Project Status</Link>
 
       <h1 className="text-2xl font-bold mt-3 mb-6" style={{ color: '#2C2C2C' }}>
         {isEdit ? 'Edit Project' : 'New Project'}
@@ -126,12 +129,25 @@ export default function OperationsForm() {
             <div>
               <label style={labelStyle}>Project-in-Charge (PIC)</label>
               <input name="pic" value={form.pic} onChange={handleChange}
-                placeholder="e.g. VIC, JOSE" style={inputStyle} />
+                placeholder="e.g. VIC, Jonathan, CHEL" style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>Subcon</label>
               <input name="subcon" value={form.subcon} onChange={handleChange}
-                placeholder="e.g. SARIBAY" style={inputStyle} />
+                placeholder="e.g. ELIZARDO" style={inputStyle} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label style={labelStyle}>Contact Person</label>
+              <input name="contact_person" value={form.contact_person} onChange={handleChange}
+                placeholder="e.g. Engr. Bianca" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Contact Number</label>
+              <input name="contact_number" value={form.contact_number} onChange={handleChange}
+                placeholder="e.g. 09212925000" style={inputStyle} />
             </div>
           </div>
 
@@ -162,9 +178,9 @@ export default function OperationsForm() {
 
         {/* Status */}
         <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24 }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Installation Status</p>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Project Status</p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 16 }}>
             {OPS_STATUSES.map(s => (
               <button key={s.value} type="button" onClick={() => set('status', s.value)}
                 style={{

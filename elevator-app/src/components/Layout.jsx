@@ -7,7 +7,7 @@ const navItems = [
   { label: 'Customers', to: '/customers' },
   { label: 'New Installations', to: '/pipeline' },
   { label: 'Maintenance Contracts', to: '/contracts' },
-  { label: 'Operations', to: '/operations' },
+  { label: 'Project Status', to: '/operations' },
   { label: 'Service Visits', to: '/jobs' },
   { label: 'Breakdown Calls', to: '/breakdowns' },
   { label: 'Finance', to: '/finance', adminOnly: true },

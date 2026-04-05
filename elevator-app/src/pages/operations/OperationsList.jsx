@@ -3,12 +3,17 @@ import { Link } from 'react-router-dom'
 import { getOpsProjects } from '../../lib/api'
 
 export const OPS_STATUSES = [
-  { value: 'mechanical_installation', label: 'Mechanical Installation', bg: '#2C2C2C', color: '#D4AF37' },
-  { value: 'for_tnc',                label: 'For T&C',                 bg: '#5C4A00', color: '#F5F5DC' },
-  { value: 'done_tnc',               label: 'Done T&C',                bg: '#D4AF37', color: '#2C2C2C' },
-  { value: 'awaiting_power',         label: 'Awaiting Power',           bg: '#8B4500', color: '#F5F5DC' },
-  { value: 'for_handover',           label: 'For Handover',             bg: '#1A4A1A', color: '#90EE90' },
-  { value: 'handed_over',            label: 'Handed Over',              bg: '#4CAF50', color: '#FFFFFF' },
+  { value: 'on_going_production',          label: 'On-Going Production',           bg: '#1A2A4A', color: '#7EB8F7' },
+  { value: 'for_delivery',                 label: 'For Delivery / Shipment',       bg: '#4A3A00', color: '#F5D87A' },
+  { value: 'unit_delivered_awaiting_shaft',label: 'Unit Delivered – Awaiting Shaft',bg: '#5C3A00', color: '#F5C06A' },
+  { value: 'awaiting_shaft_readiness',     label: 'Awaiting Shaft Readiness',      bg: '#3A1A00', color: '#E8B87A' },
+  { value: 'for_unloading',               label: 'For Unloading',                 bg: '#2C2C2C', color: '#D4AF37' },
+  { value: 'mechanical_installation',      label: 'Mechanical Installation',        bg: '#1A3A1A', color: '#90EE90' },
+  { value: 'for_tnc',                     label: 'For T&C',                        bg: '#5C4A00', color: '#F5F5DC' },
+  { value: 'done_tnc',                    label: 'Done T&C',                       bg: '#D4AF37', color: '#2C2C2C' },
+  { value: 'awaiting_power',              label: 'Awaiting Power',                 bg: '#8B4500', color: '#F5F5DC' },
+  { value: 'for_handover',               label: 'For Handover',                   bg: '#1A4A1A', color: '#90EE90' },
+  { value: 'handed_over',                label: 'Handed Over',                    bg: '#4CAF50', color: '#FFFFFF' },
 ]
 
 export function statusDef(val) {
@@ -55,22 +60,24 @@ export default function OperationsList() {
   return (
     <div>
       <div className="flex justify-between items-center mb-1">
-        <h1 className="text-2xl font-bold" style={{ color: '#2C2C2C' }}>Operations</h1>
+        <h1 className="text-2xl font-bold" style={{ color: '#2C2C2C' }}>Project Status</h1>
         <Link to="/operations/new"
           style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>
           + Add Project
         </Link>
       </div>
       <p className="text-sm mb-5" style={{ color: '#888888' }}>
-        Track every installation project through mechanical, T&C, and handover. QA inspections at pre-install, mid, and before handover.
+        All ongoing projects — from production and delivery through installation, T&C, and handover.
       </p>
 
       {/* Quick stats */}
       <div className="flex gap-3 mb-5 flex-wrap">
         {[
           { label: 'Active', value: activeCount, filter: 'all' },
+          { label: 'In Production', value: projects.filter(p => p.status === 'on_going_production').length, filter: 'on_going_production' },
+          { label: 'Awaiting Shaft', value: projects.filter(p => p.status === 'awaiting_shaft_readiness').length, filter: 'awaiting_shaft_readiness' },
+          { label: 'Unit Delivered', value: projects.filter(p => p.status === 'unit_delivered_awaiting_shaft').length, filter: 'unit_delivered_awaiting_shaft' },
           { label: 'Handed Over', value: handedOverCount, filter: 'handed_over' },
-          { label: 'Awaiting Power', value: stalledCount, filter: 'awaiting_power' },
         ].map(s => (
           <button key={s.filter} onClick={() => setFilter(s.filter)}
             style={{
