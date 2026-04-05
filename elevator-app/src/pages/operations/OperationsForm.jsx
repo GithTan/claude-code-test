@@ -24,8 +24,8 @@ function QARow({ label, checked, date, onCheck, onDate }) {
       <button type="button" onClick={onCheck}
         style={{
           width: 24, height: 24, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
-          backgroundColor: checked ? '#4CAF50' : '#FFFFFF',
-          border: `2px solid ${checked ? '#4CAF50' : '#D4AF37'}`,
+          backgroundColor: checked ? '#D4AF37' : '#FFFFFF',
+          border: `2px solid #D4AF37`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#FFFFFF', fontWeight: 700, fontSize: 14,
         }}>

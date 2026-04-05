@@ -4,7 +4,7 @@ import { getProjects } from '../../lib/api'
 
 const STATUS_COLORS = {
   active: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
+  completed: 'bg-yellow-100 text-yellow-900',
   cancelled: 'bg-gray-100 text-gray-800',
 }
 

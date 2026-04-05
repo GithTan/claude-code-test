@@ -8,12 +8,12 @@ export const OPS_STATUSES = [
   { value: 'unit_delivered_awaiting_shaft',label: 'Unit Delivered – Awaiting Shaft',bg: '#5C3A00', color: '#F5C06A' },
   { value: 'awaiting_shaft_readiness',     label: 'Awaiting Shaft Readiness',      bg: '#3A1A00', color: '#E8B87A' },
   { value: 'for_unloading',               label: 'For Unloading',                 bg: '#2C2C2C', color: '#D4AF37' },
-  { value: 'mechanical_installation',      label: 'Mechanical Installation',        bg: '#1A3A1A', color: '#90EE90' },
+  { value: 'mechanical_installation',      label: 'Mechanical Installation',        bg: '#2C2C2C', color: '#D4AF37' },
   { value: 'for_tnc',                     label: 'For T&C',                        bg: '#5C4A00', color: '#F5F5DC' },
   { value: 'done_tnc',                    label: 'Done T&C',                       bg: '#D4AF37', color: '#2C2C2C' },
   { value: 'awaiting_power',              label: 'Awaiting Power',                 bg: '#8B4500', color: '#F5F5DC' },
-  { value: 'for_handover',               label: 'For Handover',                   bg: '#1A4A1A', color: '#90EE90' },
-  { value: 'handed_over',                label: 'Handed Over',                    bg: '#4CAF50', color: '#FFFFFF' },
+  { value: 'for_handover',               label: 'For Handover',                   bg: '#D4AF37', color: '#2C2C2C' },
+  { value: 'handed_over',                label: 'Handed Over',                    bg: '#2C2C2C', color: '#D4AF37' },
 ]
 
 export function statusDef(val) {
@@ -32,7 +32,7 @@ function StatusBadge({ status }) {
 function QADot({ done, label }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: done ? '#4CAF50' : '#E8E0C8', border: '1px solid #D4AF37', flexShrink: 0 }} />
+      <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: done ? '#D4AF37' : '#E8E0C8', border: '1px solid #D4AF37', flexShrink: 0 }} />
       <span style={{ fontSize: 11, color: '#888888' }}>{label}</span>
     </div>
   )

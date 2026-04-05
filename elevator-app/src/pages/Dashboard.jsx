@@ -189,7 +189,7 @@ export default function Dashboard() {
                 const days = currentStep?.unlocked_at
                   ? Math.floor((Date.now() - new Date(currentStep.unlocked_at)) / 86400000)
                   : 0
-                const dotColor = days >= 7 ? '#8B0000' : days >= 3 ? '#D4AF37' : '#4CAF50'
+                const dotColor = days >= 7 ? '#8B0000' : days >= 3 ? '#D4AF37' : '#2C2C2C'
 
                 return (
                   <Link key={p.id} to={`/pipeline/${p.id}`}

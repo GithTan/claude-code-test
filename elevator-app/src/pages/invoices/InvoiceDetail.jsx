@@ -127,7 +127,7 @@ export default function InvoiceDetail() {
         </div>
         <div className="flex justify-between text-base font-bold mt-1">
           <span className="text-gray-800">Outstanding</span>
-          <span className={outstanding > 0 ? 'text-red-600' : 'text-green-600'}>{fmt(outstanding)}</span>
+          <span className={outstanding > 0 ? 'text-red-600' : 'text-yellow-700'}>{fmt(outstanding)}</span>
         </div>
       </div>
 
@@ -167,7 +167,7 @@ export default function InvoiceDetail() {
             </div>
             {payError && <p className="text-red-600 text-sm">{payError}</p>}
             <button type="submit" disabled={paying}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 text-sm">
+              style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 16px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
               {paying ? 'Recording...' : 'Record Payment'}
             </button>
           </form>

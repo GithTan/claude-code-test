@@ -5,7 +5,7 @@ import { getInvoices } from '../../lib/api'
 const STATUS_COLORS = {
   unpaid: 'bg-red-100 text-red-800',
   partially_paid: 'bg-yellow-100 text-yellow-800',
-  paid: 'bg-green-100 text-green-800',
+  paid: 'bg-yellow-100 text-yellow-900',
 }
 
 function fmt(amount) {

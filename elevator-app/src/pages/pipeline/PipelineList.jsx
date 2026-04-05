@@ -24,7 +24,7 @@ function getStageIndex(currentStep) {
 function urgencyDot(days) {
   if (days >= 7) return { color: '#8B0000' }
   if (days >= 3) return { color: '#D4AF37' }
-  return { color: '#4CAF50' }
+  return { color: '#D4AF37' }
 }
 
 function PipelineCard({ pipeline }) {

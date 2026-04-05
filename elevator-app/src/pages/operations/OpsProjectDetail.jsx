@@ -10,7 +10,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { OPS_STATUSES, statusDef } from './OperationsList'
 
 const HEALTH = {
-  on_track:        { label: 'On Track',        bg: '#1A4A1A', color: '#90EE90' },
+  on_track:        { label: 'On Track',        bg: '#2C2C2C', color: '#D4AF37' },
   needs_attention: { label: 'Needs Attention', bg: '#5C4A00', color: '#F5D87A' },
   blocked:         { label: 'Blocked',          bg: '#8B4500', color: '#FFD0A0' },
   overdue:         { label: 'Overdue',          bg: '#8B0000', color: '#FFAAAA' },
@@ -27,7 +27,7 @@ const BILLING_TYPES = [
 const BILLING_STATUS = {
   pending:  { label: 'Pending',  bg: '#E8E0C8', color: '#2C2C2C' },
   invoiced: { label: 'Invoiced', bg: '#5C4A00', color: '#F5D87A' },
-  paid:     { label: 'Paid',     bg: '#1A4A1A', color: '#90EE90' },
+  paid:     { label: 'Paid',     bg: '#2C2C2C', color: '#D4AF37' },
   overdue:  { label: 'Overdue',  bg: '#8B0000', color: '#FFAAAA' },
 }
 

@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { getBuilding, getElevators } from '../../lib/api'
 
 const STATUS_COLORS = {
-  active: 'bg-green-100 text-green-800',
+  active: 'bg-yellow-100 text-yellow-900',
   under_warranty: 'bg-blue-100 text-blue-800',
   under_free_maintenance: 'bg-yellow-100 text-yellow-800',
   inactive: 'bg-gray-100 text-gray-800',

@@ -24,7 +24,7 @@ function daysSince(dateStr) {
 
 function StatusBadge({ status, unlockedAt }) {
   if (status === 'completed') {
-    return <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Completed</span>
+    return <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-900">Completed</span>
   }
   if (status === 'locked') {
     return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">Locked</span>
@@ -243,7 +243,7 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
 
       <div className="flex gap-2">
         <button onClick={handleComplete} disabled={saving}
-          className="bg-green-600 text-white px-4 py-1.5 rounded text-sm hover:bg-green-700 disabled:opacity-50">
+          style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '6px 16px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
           {saving ? 'Saving…' : 'Mark Complete'}
         </button>
         <button onClick={onCancel}
@@ -422,14 +422,14 @@ export default function PipelineDetail() {
 
           return (
             <div key={step.id} className={`border rounded-lg p-4 ${
-              step.status === 'completed' ? 'bg-green-50 border-green-200' :
+              step.status === 'completed' ? 'bg-yellow-50 border-yellow-200' :
               step.status === 'unlocked' ? 'bg-white border-blue-300' :
               'bg-gray-50 border-gray-200 opacity-60'
             }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
-                    step.status === 'completed' ? 'bg-green-500 text-white' :
+                    step.status === 'completed' ? 'bg-yellow-400 text-gray-900' :
                     step.status === 'unlocked' ? 'bg-blue-500 text-white' :
                     'bg-gray-300 text-gray-600'
                   }`}>
@@ -455,7 +455,7 @@ export default function PipelineDetail() {
                       const sorted = [...step.pipeline_attachments].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
                       openFile(sorted[0])
                     }}
-                      className="text-xs bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700">
+                      style={{ fontSize: 12, backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '4px 12px', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
                       Download Drawing
                     </button>
                   )}
