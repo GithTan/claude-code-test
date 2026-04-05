@@ -1,0 +1,260 @@
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams, Link } from 'react-router-dom'
+import { createOpsProject, getOpsProject, updateOpsProject, deleteOpsProject } from '../../lib/api'
+import { OPS_STATUSES, statusDef } from './OperationsList'
+
+const inputStyle = {
+  width: '100%', border: '1px solid #D4AF37', backgroundColor: '#FFFFFF',
+  color: '#2C2C2C', padding: '8px 12px', fontSize: 14, outline: 'none',
+}
+const labelStyle = { display: 'block', fontSize: 13, fontWeight: 600, color: '#2C2C2C', marginBottom: 4 }
+
+const EMPTY = {
+  project_name: '', pic: '', address: '', specs: '', unit_label: '', s_o_f: '',
+  subcon: '', status: 'mechanical_installation', concerns: '', stall_reason: '',
+  qa_pre_install: false, qa_mid: false, qa_pre_handover: false,
+  qa_pre_install_date: '', qa_mid_date: '', qa_pre_handover_date: '',
+}
+
+function QARow({ label, checked, date, onCheck, onDate }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #E8E0C8' }}>
+      <button type="button" onClick={onCheck}
+        style={{
+          width: 24, height: 24, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
+          backgroundColor: checked ? '#4CAF50' : '#FFFFFF',
+          border: `2px solid ${checked ? '#4CAF50' : '#D4AF37'}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: '#FFFFFF', fontWeight: 700, fontSize: 14,
+        }}>
+        {checked ? '✓' : ''}
+      </button>
+      <span style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C', minWidth: 160 }}>{label}</span>
+      {checked && (
+        <input type="date" value={date} onChange={e => onDate(e.target.value)}
+          style={{ border: '1px solid #D4AF37', padding: '4px 8px', fontSize: 13, color: '#2C2C2C', outline: 'none' }} />
+      )}
+      {!checked && <span style={{ fontSize: 12, color: '#CCCCCC' }}>Click circle to mark done</span>}
+    </div>
+  )
+}
+
+export default function OperationsForm() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const isEdit = Boolean(id)
+
+  const [form, setForm] = useState(EMPTY)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  useEffect(() => {
+    if (isEdit) {
+      getOpsProject(id).then(({ data }) => {
+        if (data) setForm({
+          project_name: data.project_name || '',
+          pic: data.pic || '',
+          address: data.address || '',
+          specs: data.specs || '',
+          unit_label: data.unit_label || '',
+          s_o_f: data.s_o_f || '',
+          subcon: data.subcon || '',
+          status: data.status || 'mechanical_installation',
+          concerns: data.concerns || '',
+          stall_reason: data.stall_reason || '',
+          qa_pre_install: data.qa_pre_install || false,
+          qa_mid: data.qa_mid || false,
+          qa_pre_handover: data.qa_pre_handover || false,
+          qa_pre_install_date: data.qa_pre_install_date || '',
+          qa_mid_date: data.qa_mid_date || '',
+          qa_pre_handover_date: data.qa_pre_handover_date || '',
+        })
+      })
+    }
+  }, [id, isEdit])
+
+  function set(field, value) { setForm(f => ({ ...f, [field]: value })) }
+  function handleChange(e) { set(e.target.name, e.target.value) }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setError('')
+    setSaving(true)
+    const payload = {
+      ...form,
+      qa_pre_install_date: form.qa_pre_install_date || null,
+      qa_mid_date: form.qa_mid_date || null,
+      qa_pre_handover_date: form.qa_pre_handover_date || null,
+    }
+    const { error: err } = isEdit
+      ? await updateOpsProject(id, payload)
+      : await createOpsProject(payload)
+    setSaving(false)
+    if (err) { setError(err.message); return }
+    navigate('/operations')
+  }
+
+  async function handleDelete() {
+    await deleteOpsProject(id)
+    navigate('/operations')
+  }
+
+  const curStatus = statusDef(form.status)
+
+  return (
+    <div style={{ maxWidth: 640 }}>
+      <Link to="/operations" style={{ fontSize: 13, color: '#D4AF37', fontWeight: 600 }}>← Operations</Link>
+
+      <h1 className="text-2xl font-bold mt-3 mb-6" style={{ color: '#2C2C2C' }}>
+        {isEdit ? 'Edit Project' : 'New Project'}
+      </h1>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+
+        {/* Basic info */}
+        <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24 }} className="space-y-4">
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Project Info</p>
+
+          <div>
+            <label style={labelStyle}>Project Name *</label>
+            <input name="project_name" value={form.project_name} onChange={handleChange} required
+              placeholder="e.g. SM Aura Tower" style={inputStyle} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label style={labelStyle}>Project-in-Charge (PIC)</label>
+              <input name="pic" value={form.pic} onChange={handleChange}
+                placeholder="e.g. VIC, JOSE" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Subcon</label>
+              <input name="subcon" value={form.subcon} onChange={handleChange}
+                placeholder="e.g. SARIBAY" style={inputStyle} />
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Address</label>
+            <input name="address" value={form.address} onChange={handleChange}
+              placeholder="e.g. Quezon Ave., Sta Cruz, Laguna" style={inputStyle} />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label style={labelStyle}>Specs</label>
+              <input name="specs" value={form.specs} onChange={handleChange}
+                placeholder="e.g. 450 KG Passenger" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Unit Label</label>
+              <input name="unit_label" value={form.unit_label} onChange={handleChange}
+                placeholder="e.g. PE1, CL1" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>S/O/F</label>
+              <input name="s_o_f" value={form.s_o_f} onChange={handleChange}
+                placeholder="e.g. 4/4/4" style={inputStyle} />
+            </div>
+          </div>
+        </div>
+
+        {/* Status */}
+        <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 12 }}>Installation Status</p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
+            {OPS_STATUSES.map(s => (
+              <button key={s.value} type="button" onClick={() => set('status', s.value)}
+                style={{
+                  padding: '10px 8px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  backgroundColor: form.status === s.value ? s.bg : '#FFFFFF',
+                  color: form.status === s.value ? s.color : '#888888',
+                  border: `1px solid ${form.status === s.value ? s.bg : '#D4AF37'}`,
+                }}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+
+          {(form.status === 'done_tnc' || form.status === 'awaiting_power') && (
+            <div style={{ marginBottom: 12 }}>
+              <label style={labelStyle}>Stall Reason (if any)</label>
+              <input name="stall_reason" value={form.stall_reason} onChange={handleChange}
+                placeholder="e.g. Awaiting permanent power supply" style={inputStyle} />
+            </div>
+          )}
+
+          <div>
+            <label style={labelStyle}>Concerns / Notes</label>
+            <textarea name="concerns" value={form.concerns} onChange={handleChange} rows={3}
+              placeholder="Any open items, punchlist, or follow-ups…" style={inputStyle} />
+          </div>
+        </div>
+
+        {/* QA Checkpoints */}
+        <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>QA Inspections</p>
+          <p style={{ fontSize: 12, color: '#888888', marginBottom: 16 }}>QA must inspect at 3 stages. Click the circle to mark each as done.</p>
+
+          <QARow
+            label="Pre-Installation Check"
+            checked={form.qa_pre_install}
+            date={form.qa_pre_install_date}
+            onCheck={() => set('qa_pre_install', !form.qa_pre_install)}
+            onDate={v => set('qa_pre_install_date', v)}
+          />
+          <QARow
+            label="Mid-Installation Check"
+            checked={form.qa_mid}
+            date={form.qa_mid_date}
+            onCheck={() => set('qa_mid', !form.qa_mid)}
+            onDate={v => set('qa_mid_date', v)}
+          />
+          <QARow
+            label="Pre-Handover Check"
+            checked={form.qa_pre_handover}
+            date={form.qa_pre_handover_date}
+            onCheck={() => set('qa_pre_handover', !form.qa_pre_handover)}
+            onDate={v => set('qa_pre_handover_date', v)}
+          />
+        </div>
+
+        {error && <p style={{ color: '#8B0000', fontSize: 13 }}>{error}</p>}
+
+        <div className="flex justify-between items-center pt-2">
+          <div className="flex gap-3">
+            <button type="submit" disabled={saving}
+              style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 20px', fontWeight: 600, fontSize: 14, opacity: saving ? 0.5 : 1 }}>
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button type="button" onClick={() => navigate('/operations')}
+              style={{ backgroundColor: '#FFFFFF', color: '#2C2C2C', padding: '8px 20px', border: '1px solid #D4AF37', fontSize: 14 }}>
+              Cancel
+            </button>
+          </div>
+          {isEdit && !confirmDelete && (
+            <button type="button" onClick={() => setConfirmDelete(true)}
+              style={{ fontSize: 12, color: '#8B0000', border: '1px solid #8B0000', padding: '6px 12px', background: 'none', cursor: 'pointer' }}>
+              Delete Project
+            </button>
+          )}
+          {isEdit && confirmDelete && (
+            <div className="flex gap-2 items-center">
+              <span style={{ fontSize: 12, color: '#8B0000' }}>Sure?</span>
+              <button type="button" onClick={handleDelete}
+                style={{ fontSize: 12, backgroundColor: '#8B0000', color: '#FFFFFF', padding: '6px 12px', border: 'none', cursor: 'pointer' }}>
+                Yes, Delete
+              </button>
+              <button type="button" onClick={() => setConfirmDelete(false)}
+                style={{ fontSize: 12, color: '#888888', border: '1px solid #CCCCCC', padding: '6px 12px', background: 'none', cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      </form>
+    </div>
+  )
+}

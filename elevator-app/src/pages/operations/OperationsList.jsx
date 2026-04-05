@@ -1,0 +1,159 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { getOpsProjects } from '../../lib/api'
+
+export const OPS_STATUSES = [
+  { value: 'mechanical_installation', label: 'Mechanical Installation', bg: '#2C2C2C', color: '#D4AF37' },
+  { value: 'for_tnc',                label: 'For T&C',                 bg: '#5C4A00', color: '#F5F5DC' },
+  { value: 'done_tnc',               label: 'Done T&C',                bg: '#D4AF37', color: '#2C2C2C' },
+  { value: 'awaiting_power',         label: 'Awaiting Power',           bg: '#8B4500', color: '#F5F5DC' },
+  { value: 'for_handover',           label: 'For Handover',             bg: '#1A4A1A', color: '#90EE90' },
+  { value: 'handed_over',            label: 'Handed Over',              bg: '#4CAF50', color: '#FFFFFF' },
+]
+
+export function statusDef(val) {
+  return OPS_STATUSES.find(s => s.value === val) || { label: val, bg: '#888', color: '#fff' }
+}
+
+function StatusBadge({ status }) {
+  const s = statusDef(status)
+  return (
+    <span style={{ backgroundColor: s.bg, color: s.color, padding: '3px 9px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+      {s.label}
+    </span>
+  )
+}
+
+function QADot({ done, label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: done ? '#4CAF50' : '#E8E0C8', border: '1px solid #D4AF37', flexShrink: 0 }} />
+      <span style={{ fontSize: 11, color: '#888888' }}>{label}</span>
+    </div>
+  )
+}
+
+const thStyle = { padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em', backgroundColor: '#F5F5DC', borderBottom: '1px solid #D4AF37' }
+const tdStyle = { padding: '11px 14px', fontSize: 13, color: '#2C2C2C', borderBottom: '1px solid #E8E0C8', verticalAlign: 'top' }
+
+export default function OperationsList() {
+  const [projects, setProjects] = useState([])
+  const [filter, setFilter] = useState('all')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getOpsProjects().then(({ data }) => { setProjects(data || []); setLoading(false) })
+  }, [])
+
+  if (loading) return <p style={{ color: '#888888' }}>Loading…</p>
+
+  const filtered = filter === 'all' ? projects : projects.filter(p => p.status === filter)
+  const activeCount = projects.filter(p => p.status !== 'handed_over').length
+  const handedOverCount = projects.filter(p => p.status === 'handed_over').length
+  const stalledCount = projects.filter(p => p.status === 'awaiting_power').length
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-1">
+        <h1 className="text-2xl font-bold" style={{ color: '#2C2C2C' }}>Operations</h1>
+        <Link to="/operations/new"
+          style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>
+          + Add Project
+        </Link>
+      </div>
+      <p className="text-sm mb-5" style={{ color: '#888888' }}>
+        Track every installation project through mechanical, T&C, and handover. QA inspections at pre-install, mid, and before handover.
+      </p>
+
+      {/* Quick stats */}
+      <div className="flex gap-3 mb-5 flex-wrap">
+        {[
+          { label: 'Active', value: activeCount, filter: 'all' },
+          { label: 'Handed Over', value: handedOverCount, filter: 'handed_over' },
+          { label: 'Awaiting Power', value: stalledCount, filter: 'awaiting_power' },
+        ].map(s => (
+          <button key={s.filter} onClick={() => setFilter(s.filter)}
+            style={{
+              padding: '10px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              backgroundColor: filter === s.filter ? '#D4AF37' : '#F5F5DC',
+              color: '#2C2C2C', border: '1px solid #D4AF37',
+            }}>
+            {s.value} {s.label}
+          </button>
+        ))}
+        <select value={filter} onChange={e => setFilter(e.target.value)}
+          style={{ marginLeft: 'auto', border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '8px 12px', fontSize: 13 }}>
+          <option value="all">All Statuses</option>
+          {OPS_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+        </select>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24, textAlign: 'center' }}>
+          <p style={{ color: '#888888', fontSize: 14 }}>No projects found.</p>
+          <Link to="/operations/new" style={{ color: '#D4AF37', fontSize: 13, fontWeight: 600 }}>Add a project →</Link>
+        </div>
+      ) : (
+        <div style={{ border: '1px solid #D4AF37', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={thStyle}>Project</th>
+                <th style={thStyle}>PIC</th>
+                <th style={thStyle}>Specs / Unit</th>
+                <th style={thStyle}>Subcon</th>
+                <th style={thStyle}>QA</th>
+                <th style={thStyle}>Status</th>
+                <th style={thStyle}>Concerns</th>
+                <th style={thStyle}></th>
+              </tr>
+            </thead>
+            <tbody style={{ backgroundColor: '#FFFFFF' }}>
+              {filtered.map(p => (
+                <tr key={p.id}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FAFAF0'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FFFFFF'}>
+                  <td style={{ ...tdStyle, fontWeight: 600 }}>
+                    {p.project_name}
+                    {p.address && <p style={{ fontSize: 11, color: '#888888', fontWeight: 400, marginTop: 2 }}>{p.address}</p>}
+                  </td>
+                  <td style={{ ...tdStyle, fontWeight: 600 }}>{p.pic || '—'}</td>
+                  <td style={tdStyle}>
+                    {p.specs && <p style={{ fontWeight: 500 }}>{p.specs}</p>}
+                    {p.unit_label && <p style={{ fontSize: 11, color: '#888888' }}>{p.unit_label}</p>}
+                    {p.s_o_f && <p style={{ fontSize: 11, color: '#888888' }}>S/O/F: {p.s_o_f}</p>}
+                  </td>
+                  <td style={tdStyle}>{p.subcon || <span style={{ color: '#CCCCCC' }}>—</span>}</td>
+                  <td style={{ ...tdStyle, minWidth: 90 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <QADot done={p.qa_pre_install} label="Pre-install" />
+                      <QADot done={p.qa_mid} label="Mid" />
+                      <QADot done={p.qa_pre_handover} label="Pre-HO" />
+                    </div>
+                  </td>
+                  <td style={tdStyle}>
+                    <StatusBadge status={p.status} />
+                    {p.stall_reason && (
+                      <p style={{ fontSize: 11, color: '#8B4500', marginTop: 4, fontStyle: 'italic' }}>{p.stall_reason}</p>
+                    )}
+                  </td>
+                  <td style={{ ...tdStyle, maxWidth: 200, fontSize: 12, color: '#666666' }}>
+                    {p.concerns || <span style={{ color: '#CCCCCC' }}>—</span>}
+                  </td>
+                  <td style={{ ...tdStyle, textAlign: 'right' }}>
+                    <Link to={`/operations/${p.id}/edit`} style={{ color: '#D4AF37', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      Edit →
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ backgroundColor: '#F5F5DC', padding: '8px 14px', borderTop: '1px solid #D4AF37' }}>
+            <span style={{ fontSize: 12, color: '#888888' }}>{filtered.length} project{filtered.length !== 1 ? 's' : ''}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

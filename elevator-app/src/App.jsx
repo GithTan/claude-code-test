@@ -33,6 +33,8 @@ import PipelineDetail from './pages/pipeline/PipelineDetail'
 import PipelineForm from './pages/pipeline/PipelineForm'
 import FinanceDashboard from './pages/finance/FinanceDashboard'
 import StartHere from './pages/StartHere'
+import OperationsList from './pages/operations/OperationsList'
+import OperationsForm from './pages/operations/OperationsForm'
 
 function ProtectedLayout() {
   return (
@@ -81,6 +83,9 @@ function AppRoutes() {
         <Route path="/contracts/new" element={<AmcForm />} />
         <Route path="/contracts/:id" element={<AmcDetail />} />
         <Route path="/contracts/:id/edit" element={<AmcForm />} />
+        <Route path="/operations" element={<OperationsList />} />
+        <Route path="/operations/new" element={<OperationsForm />} />
+        <Route path="/operations/:id/edit" element={<OperationsForm />} />
         <Route path="/breakdowns" element={<BreakdownList />} />
         <Route path="/breakdowns/new" element={<BreakdownForm />} />
         <Route path="/breakdowns/:id/edit" element={<BreakdownForm />} />

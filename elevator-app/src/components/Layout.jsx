@@ -2,18 +2,17 @@ import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 const navItems = [
-  { label: 'Start Here', to: '/start' },
+  { label: '⬡ Start Here', to: '/start' },
   { label: 'Dashboard', to: '/' },
   { label: 'Customers', to: '/customers' },
-  { label: 'Elevators', to: '/elevators' },
+  { label: 'New Installations', to: '/pipeline' },
   { label: 'Maintenance Contracts', to: '/contracts' },
-  { label: 'Maintenance', to: '/maintenance' },
-  { label: 'Jobs', to: '/jobs' },
-  { label: 'Breakdowns', to: '/breakdowns' },
-  { label: 'Pipeline', to: '/pipeline' },
+  { label: 'Operations', to: '/operations' },
+  { label: 'Service Visits', to: '/jobs' },
+  { label: 'Breakdown Calls', to: '/breakdowns' },
   { label: 'Finance', to: '/finance', adminOnly: true },
   { label: 'Invoices', to: '/invoices', adminOnly: true },
-  { label: 'Reports', to: '/reports' },
+  { label: 'Reports', to: '/reports', adminOnly: true },
 ]
 
 export default function Layout({ children }) {

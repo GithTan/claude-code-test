@@ -380,3 +380,20 @@ export async function resetPipelineToStep(pipelineId, stepNumber) {
     body: JSON.stringify({ current_step: stepNumber, status: 'active', updated_at: new Date().toISOString() }),
   })
 }
+
+// ─── Operations Projects ──────────────────────────────────────────────────────
+export async function getOpsProjects() {
+  return rest('/ops_projects?select=*&order=created_at.desc')
+}
+export async function getOpsProject(id) {
+  return restOne(`/ops_projects?select=*&id=eq.${id}`)
+}
+export async function createOpsProject(data) {
+  return restPost('/ops_projects', data)
+}
+export async function updateOpsProject(id, data) {
+  return restPatch(`/ops_projects?id=eq.${id}`, data)
+}
+export async function deleteOpsProject(id) {
+  return restDelete(`/ops_projects?id=eq.${id}`)
+}
