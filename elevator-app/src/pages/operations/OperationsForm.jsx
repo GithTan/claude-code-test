@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { createOpsProject, getOpsProject, updateOpsProject, deleteOpsProject } from '../../lib/api'
+import { createOpsProject, getOpsProject, updateOpsProject, deleteOpsProject, requestDeletion } from '../../lib/api'
 import { OPS_STATUSES, statusDef } from './OperationsList'
+import { useAuth } from '../../contexts/AuthContext'
 
 const inputStyle = {
   width: '100%', border: '1px solid #D4AF37', backgroundColor: '#FFFFFF',
@@ -43,12 +44,14 @@ function QARow({ label, checked, date, onCheck, onDate }) {
 export default function OperationsForm() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { role, user } = useAuth()
   const isEdit = Boolean(id)
 
   const [form, setForm] = useState(EMPTY)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteRequested, setDeleteRequested] = useState(false)
 
   useEffect(() => {
     if (isEdit) {
@@ -101,6 +104,11 @@ export default function OperationsForm() {
   async function handleDelete() {
     await deleteOpsProject(id)
     navigate('/operations')
+  }
+
+  async function handleRequestDeletion() {
+    await requestDeletion(id, user?.email || 'staff')
+    setDeleteRequested(true)
   }
 
   const curStatus = statusDef(form.status)
@@ -250,13 +258,14 @@ export default function OperationsForm() {
               Cancel
             </button>
           </div>
-          {isEdit && !confirmDelete && (
+          {/* Admin: direct delete with confirm */}
+          {isEdit && role === 'admin' && !confirmDelete && (
             <button type="button" onClick={() => setConfirmDelete(true)}
               style={{ fontSize: 12, color: '#8B0000', border: '1px solid #8B0000', padding: '6px 12px', background: 'none', cursor: 'pointer' }}>
               Delete Project
             </button>
           )}
-          {isEdit && confirmDelete && (
+          {isEdit && role === 'admin' && confirmDelete && (
             <div className="flex gap-2 items-center">
               <span style={{ fontSize: 12, color: '#8B0000' }}>Sure?</span>
               <button type="button" onClick={handleDelete}
@@ -268,6 +277,18 @@ export default function OperationsForm() {
                 Cancel
               </button>
             </div>
+          )}
+          {/* Non-admin: request deletion (needs owner approval) */}
+          {isEdit && role !== 'admin' && !deleteRequested && !form.deletion_pending && (
+            <button type="button" onClick={handleRequestDeletion}
+              style={{ fontSize: 12, color: '#8B0000', border: '1px solid #8B0000', padding: '6px 12px', background: 'none', cursor: 'pointer' }}>
+              Request Deletion
+            </button>
+          )}
+          {isEdit && role !== 'admin' && (deleteRequested || form.deletion_pending) && (
+            <span style={{ fontSize: 12, color: '#888888', fontStyle: 'italic' }}>
+              Deletion pending owner approval
+            </span>
           )}
         </div>
       </form>

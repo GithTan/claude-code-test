@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useEffect, useRef, useState } from 'react'
+import { getAlerts, approveDeletion, denyDeletion } from '../lib/api'
 
 const navItems = [
   { label: '⬡ Start Here', to: '/start' },
@@ -15,6 +17,161 @@ const navItems = [
   { label: 'Reports', to: '/reports', adminOnly: true },
 ]
 
+function daysSince(dateStr) {
+  if (!dateStr) return 0
+  return Math.floor((Date.now() - new Date(dateStr)) / 86400000)
+}
+
+function NotificationBell({ role }) {
+  const [alerts, setAlerts] = useState({ production: [], deletions: [], total: 0 })
+  const [open, setOpen] = useState(false)
+  const [acting, setActing] = useState(null)
+  const panelRef = useRef(null)
+
+  async function load() {
+    const a = await getAlerts()
+    setAlerts(a)
+  }
+
+  useEffect(() => {
+    load()
+    const interval = setInterval(load, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Close panel on outside click
+  useEffect(() => {
+    function handleClick(e) {
+      if (panelRef.current && !panelRef.current.contains(e.target)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  async function handleApprove(id) {
+    setActing(id)
+    await approveDeletion(id)
+    await load()
+    setActing(null)
+  }
+
+  async function handleDeny(id) {
+    setActing(id)
+    await denyDeletion(id)
+    await load()
+    setActing(null)
+  }
+
+  const count = alerts.total
+
+  return (
+    <div style={{ position: 'relative' }} ref={panelRef}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          position: 'relative', background: 'none', border: 'none',
+          cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center',
+        }}
+        title={count > 0 ? `${count} alert${count > 1 ? 's' : ''}` : 'No alerts'}
+      >
+        {/* Bell SVG */}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill={count > 0 ? '#D4AF37' : '#666666'}>
+          <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5S10.5 3.17 10.5 4v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+        </svg>
+        {/* Badge */}
+        {count > 0 && (
+          <span style={{
+            position: 'absolute', top: 0, right: 0,
+            backgroundColor: '#CC0000', color: '#FFFFFF',
+            borderRadius: '50%', minWidth: 16, height: 16,
+            fontSize: 10, fontWeight: 700, lineHeight: '16px',
+            textAlign: 'center', padding: '0 3px',
+          }}>
+            {count}
+          </span>
+        )}
+      </button>
+
+      {/* Dropdown panel */}
+      {open && (
+        <div style={{
+          position: 'fixed', left: 224, top: 0,
+          width: 320, maxHeight: '80vh', overflowY: 'auto',
+          backgroundColor: '#FFFFFF', border: '1px solid #D4AF37',
+          boxShadow: '4px 4px 16px rgba(0,0,0,0.2)', zIndex: 1000,
+        }}>
+          <div style={{ backgroundColor: '#2C2C2C', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: '#D4AF37', fontWeight: 700, fontSize: 13 }}>Alerts</span>
+            {count === 0 && <span style={{ color: '#888888', fontSize: 12 }}>All clear</span>}
+          </div>
+
+          {/* Production alerts */}
+          {alerts.production.length > 0 && (
+            <div>
+              <div style={{ backgroundColor: '#F5F5DC', padding: '8px 16px', borderBottom: '1px solid #E8E0C8' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#8B4500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Pre-Shipment Payment Due ({alerts.production.length})
+                </span>
+              </div>
+              {alerts.production.map(p => {
+                const days = daysSince(p.production_start_date)
+                return (
+                  <div key={p.id} style={{ padding: '12px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFFBF0' }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C', marginBottom: 2 }}>{p.project_name}</p>
+                    <p style={{ fontSize: 12, color: '#8B4500' }}>
+                      Production day <strong>{days}</strong> of ~30 — follow up client for pre-shipment payment
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Deletion requests — admin only */}
+          {role === 'admin' && alerts.deletions.length > 0 && (
+            <div>
+              <div style={{ backgroundColor: '#F5F5DC', padding: '8px 16px', borderBottom: '1px solid #E8E0C8' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#8B0000', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Deletion Requests ({alerts.deletions.length})
+                </span>
+              </div>
+              {alerts.deletions.map(p => (
+                <div key={p.id} style={{ padding: '12px 16px', borderBottom: '1px solid #E8E0C8' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C', marginBottom: 2 }}>{p.project_name}</p>
+                  <p style={{ fontSize: 11, color: '#888888', marginBottom: 8 }}>
+                    Requested by {p.deletion_requested_by || 'staff'}
+                    {p.deletion_requested_at ? ` · ${daysSince(p.deletion_requested_at)}d ago` : ''}
+                  </p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => handleApprove(p.id)}
+                      disabled={acting === p.id}
+                      style={{ backgroundColor: '#8B0000', color: '#FFFFFF', border: 'none', padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                      {acting === p.id ? '…' : 'Approve Delete'}
+                    </button>
+                    <button
+                      onClick={() => handleDeny(p.id)}
+                      disabled={acting === p.id}
+                      style={{ backgroundColor: '#FFFFFF', color: '#2C2C2C', border: '1px solid #D4AF37', padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}>
+                      Deny
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {count === 0 && (
+            <div style={{ padding: 24, textAlign: 'center' }}>
+              <p style={{ fontSize: 13, color: '#888888' }}>No alerts right now.</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Layout({ children }) {
   const { user, role, signOut } = useAuth()
 
@@ -24,14 +181,17 @@ export default function Layout({ children }) {
     <div className="flex h-screen" style={{ backgroundColor: '#F5F5F5' }}>
       {/* Sidebar */}
       <aside className="w-56 flex flex-col" style={{ backgroundColor: '#2C2C2C' }}>
-        {/* Brand */}
-        <div className="p-5" style={{ borderBottom: '1px solid #3D3D3D' }}>
-          <h1 className="font-brand text-xl font-bold" style={{ color: '#D4AF37', letterSpacing: '0.02em' }}>
-            FIEC Elevator
-          </h1>
-          <p className="text-xs mt-1 capitalize" style={{ color: '#888888' }}>
-            {role?.replaceAll('_', ' ')}
-          </p>
+        {/* Brand + Bell */}
+        <div className="p-5" style={{ borderBottom: '1px solid #3D3D3D', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div>
+            <h1 className="font-brand text-xl font-bold" style={{ color: '#D4AF37', letterSpacing: '0.02em' }}>
+              FIEC Elevator
+            </h1>
+            <p className="text-xs mt-1 capitalize" style={{ color: '#888888' }}>
+              {role?.replaceAll('_', ' ')}
+            </p>
+          </div>
+          <NotificationBell role={role} />
         </div>
 
         {/* Nav */}
@@ -59,9 +219,7 @@ export default function Layout({ children }) {
         <div className="p-4" style={{ borderTop: '1px solid #3D3D3D' }}>
           <p className="text-xs truncate mb-3" style={{ color: '#888888' }}>{user?.email}</p>
 
-          {/* Luck seal + Sign out — right aligned */}
           <div className="flex items-center justify-end gap-2 mb-2">
-            {/* Square+dot symbol */}
             <div style={{
               width: 18, height: 18, border: '1.5px solid #D4AF37',
               display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,

@@ -397,3 +397,34 @@ export async function updateOpsProject(id, data) {
 export async function deleteOpsProject(id) {
   return restDelete(`/ops_projects?id=eq.${id}`)
 }
+
+// ─── Alerts ──────────────────────────────────────────────────────────────────
+export async function getAlerts() {
+  const cutoff = new Date(Date.now() - 23 * 86400000).toISOString().split('T')[0]
+  const [prod, del] = await Promise.all([
+    rest(`/ops_projects?select=id,project_name,production_start_date&status=eq.on_going_production&production_start_date=lte.${cutoff}&deletion_pending=eq.false`),
+    rest('/ops_projects?select=id,project_name,deletion_requested_by,deletion_requested_at&deletion_pending=eq.true'),
+  ])
+  const production = prod.data || []
+  const deletions = del.data || []
+  return { production, deletions, total: production.length + deletions.length }
+}
+
+// Deletion approval flow
+export async function requestDeletion(id, requestedBy) {
+  return restPatch(`/ops_projects?id=eq.${id}`, {
+    deletion_pending: true,
+    deletion_requested_by: requestedBy,
+    deletion_requested_at: new Date().toISOString(),
+  })
+}
+export async function approveDeletion(id) {
+  return restDelete(`/ops_projects?id=eq.${id}`)
+}
+export async function denyDeletion(id) {
+  return restPatch(`/ops_projects?id=eq.${id}`, {
+    deletion_pending: false,
+    deletion_requested_by: null,
+    deletion_requested_at: null,
+  })
+}

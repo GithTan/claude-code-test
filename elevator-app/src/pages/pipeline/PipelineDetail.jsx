@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   getPipeline, completeStep, unlockNextStep, updatePipelineCurrentStep,
   overrideGate, uploadPipelineFile, getPipelineFileUrl, logActivity, getPipelineActivity,
-  PIPELINE_STEPS, deletePipeline, resetPipelineToStep,
+  PIPELINE_STEPS, deletePipeline, resetPipelineToStep, createOpsProject,
 } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -150,6 +150,24 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
       await updatePipelineCurrentStep(pipeline.id, nextNum)
     } else {
       await updatePipelineCurrentStep(pipeline.id, PIPELINE_STEPS.length + 1)
+    }
+
+    // Step 5 = Payment to Supplier — auto-add to Project Status as On-Going Production
+    if (step.step_number === 5) {
+      const proj = pipeline.installation_projects
+      const today = new Date().toISOString().split('T')[0]
+      const specParts = [
+        pipeline.elevator_type?.replace(/_/g, ' '),
+        pipeline.home_elevator_type,
+        pipeline.unit_count > 1 ? `${pipeline.unit_count} units` : null,
+      ].filter(Boolean).join(' · ')
+      await createOpsProject({
+        project_name: proj?.project_name || 'New Installation',
+        status: 'on_going_production',
+        production_start_date: today,
+        specs: specParts || null,
+        concerns: 'Auto-added from Pipeline after supplier payment.',
+      })
     }
 
     await logActivity(pipeline.id, step.id, 'step_completed', notes, data)

@@ -41,6 +41,11 @@ function QADot({ done, label }) {
 const thStyle = { padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em', backgroundColor: '#F5F5DC', borderBottom: '1px solid #D4AF37' }
 const tdStyle = { padding: '11px 14px', fontSize: 13, color: '#2C2C2C', borderBottom: '1px solid #E8E0C8', verticalAlign: 'top' }
 
+function isNew(createdAt) {
+  if (!createdAt) return false
+  return (Date.now() - new Date(createdAt)) < 3 * 86400000
+}
+
 export default function OperationsList() {
   const [projects, setProjects] = useState([])
   const [filter, setFilter] = useState('all')
@@ -116,44 +121,59 @@ export default function OperationsList() {
               </tr>
             </thead>
             <tbody style={{ backgroundColor: '#FFFFFF' }}>
-              {filtered.map(p => (
-                <tr key={p.id}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#FAFAF0'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FFFFFF'}>
-                  <td style={{ ...tdStyle, fontWeight: 600 }}>
-                    {p.project_name}
-                    {p.address && <p style={{ fontSize: 11, color: '#888888', fontWeight: 400, marginTop: 2 }}>{p.address}</p>}
-                  </td>
-                  <td style={{ ...tdStyle, fontWeight: 600 }}>{p.pic || '—'}</td>
-                  <td style={tdStyle}>
-                    {p.specs && <p style={{ fontWeight: 500 }}>{p.specs}</p>}
-                    {p.unit_label && <p style={{ fontSize: 11, color: '#888888' }}>{p.unit_label}</p>}
-                    {p.s_o_f && <p style={{ fontSize: 11, color: '#888888' }}>S/O/F: {p.s_o_f}</p>}
-                  </td>
-                  <td style={tdStyle}>{p.subcon || <span style={{ color: '#CCCCCC' }}>—</span>}</td>
-                  <td style={{ ...tdStyle, minWidth: 90 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <QADot done={p.qa_pre_install} label="Pre-install" />
-                      <QADot done={p.qa_mid} label="Mid" />
-                      <QADot done={p.qa_pre_handover} label="Pre-HO" />
-                    </div>
-                  </td>
-                  <td style={tdStyle}>
-                    <StatusBadge status={p.status} />
-                    {p.stall_reason && (
-                      <p style={{ fontSize: 11, color: '#8B4500', marginTop: 4, fontStyle: 'italic' }}>{p.stall_reason}</p>
-                    )}
-                  </td>
-                  <td style={{ ...tdStyle, maxWidth: 200, fontSize: 12, color: '#666666' }}>
-                    {p.concerns || <span style={{ color: '#CCCCCC' }}>—</span>}
-                  </td>
-                  <td style={{ ...tdStyle, textAlign: 'right' }}>
-                    <Link to={`/operations/${p.id}/edit`} style={{ color: '#D4AF37', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      Edit →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(p => {
+                const brandNew = isNew(p.created_at)
+                const pendingDeletion = p.deletion_pending
+                const rowBg = pendingDeletion ? '#FFF0F0' : brandNew ? '#FFFEF0' : '#FFFFFF'
+                const rowHover = pendingDeletion ? '#FFE8E8' : brandNew ? '#FFFDE0' : '#FAFAF0'
+                return (
+                  <tr key={p.id}
+                    onMouseEnter={e => e.currentTarget.style.backgroundColor = rowHover}
+                    onMouseLeave={e => e.currentTarget.style.backgroundColor = rowBg}
+                    style={{ backgroundColor: rowBg, borderLeft: brandNew ? '3px solid #D4AF37' : pendingDeletion ? '3px solid #CC0000' : 'none' }}>
+                    <td style={{ ...tdStyle, fontWeight: 600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {p.project_name}
+                        {brandNew && (
+                          <span style={{ fontSize: 9, fontWeight: 700, backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '1px 5px', letterSpacing: '0.05em' }}>NEW</span>
+                        )}
+                        {pendingDeletion && (
+                          <span style={{ fontSize: 9, fontWeight: 700, backgroundColor: '#CC0000', color: '#FFFFFF', padding: '1px 5px', letterSpacing: '0.05em' }}>DEL PENDING</span>
+                        )}
+                      </div>
+                      {p.address && <p style={{ fontSize: 11, color: '#888888', fontWeight: 400, marginTop: 2 }}>{p.address}</p>}
+                    </td>
+                    <td style={{ ...tdStyle, fontWeight: 600 }}>{p.pic || '—'}</td>
+                    <td style={tdStyle}>
+                      {p.specs && <p style={{ fontWeight: 500 }}>{p.specs}</p>}
+                      {p.unit_label && <p style={{ fontSize: 11, color: '#888888' }}>{p.unit_label}</p>}
+                      {p.s_o_f && <p style={{ fontSize: 11, color: '#888888' }}>S/O/F: {p.s_o_f}</p>}
+                    </td>
+                    <td style={tdStyle}>{p.subcon || <span style={{ color: '#CCCCCC' }}>—</span>}</td>
+                    <td style={{ ...tdStyle, minWidth: 90 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <QADot done={p.qa_pre_install} label="Pre-install" />
+                        <QADot done={p.qa_mid} label="Mid" />
+                        <QADot done={p.qa_pre_handover} label="Pre-HO" />
+                      </div>
+                    </td>
+                    <td style={tdStyle}>
+                      <StatusBadge status={p.status} />
+                      {p.stall_reason && (
+                        <p style={{ fontSize: 11, color: '#8B4500', marginTop: 4, fontStyle: 'italic' }}>{p.stall_reason}</p>
+                      )}
+                    </td>
+                    <td style={{ ...tdStyle, maxWidth: 200, fontSize: 12, color: '#666666' }}>
+                      {p.concerns || <span style={{ color: '#CCCCCC' }}>—</span>}
+                    </td>
+                    <td style={{ ...tdStyle, textAlign: 'right' }}>
+                      <Link to={`/operations/${p.id}/edit`} style={{ color: '#D4AF37', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        Edit →
+                      </Link>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
           <div style={{ backgroundColor: '#F5F5DC', padding: '8px 14px', borderTop: '1px solid #D4AF37' }}>
