@@ -133,7 +133,11 @@ export default function OperationsList() {
                     style={{ backgroundColor: rowBg, borderLeft: brandNew ? '3px solid #D4AF37' : pendingDeletion ? '3px solid #CC0000' : 'none' }}>
                     <td style={{ ...tdStyle, fontWeight: 600 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {p.project_name}
+                        <Link to={`/operations/${p.id}`} style={{ color: '#2C2C2C', textDecoration: 'none', fontWeight: 600 }}
+                          onMouseEnter={e => e.target.style.color = '#D4AF37'}
+                          onMouseLeave={e => e.target.style.color = '#2C2C2C'}>
+                          {p.project_name}
+                        </Link>
                         {brandNew && (
                           <span style={{ fontSize: 9, fontWeight: 700, backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '1px 5px', letterSpacing: '0.05em' }}>NEW</span>
                         )}
@@ -142,6 +146,9 @@ export default function OperationsList() {
                         )}
                       </div>
                       {p.address && <p style={{ fontSize: 11, color: '#888888', fontWeight: 400, marginTop: 2 }}>{p.address}</p>}
+                      {p.next_action && (
+                        <p style={{ fontSize: 11, color: '#8B4500', marginTop: 3 }}>→ {p.next_action}</p>
+                      )}
                     </td>
                     <td style={{ ...tdStyle, fontWeight: 600 }}>{p.pic || '—'}</td>
                     <td style={tdStyle}>

@@ -400,14 +400,26 @@ export async function deleteOpsProject(id) {
 
 // ─── Alerts ──────────────────────────────────────────────────────────────────
 export async function getAlerts() {
-  const cutoff = new Date(Date.now() - 23 * 86400000).toISOString().split('T')[0]
-  const [prod, del] = await Promise.all([
-    rest(`/ops_projects?select=id,project_name,production_start_date&status=eq.on_going_production&production_start_date=lte.${cutoff}&deletion_pending=eq.false`),
+  const prodCutoff = new Date(Date.now() - 23 * 86400000).toISOString().split('T')[0]
+  const overdueCutoff = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]
+  const today = new Date().toISOString().split('T')[0]
+  const [prod, del, overdue, nextActionDue] = await Promise.all([
+    rest(`/ops_projects?select=id,project_name,production_start_date&status=eq.on_going_production&production_start_date=lte.${prodCutoff}&deletion_pending=eq.false`),
     rest('/ops_projects?select=id,project_name,deletion_requested_by,deletion_requested_at&deletion_pending=eq.true'),
+    rest(`/ops_projects?select=id,project_name,last_updated_at,status&last_updated_at=lte.${overdueCutoff}&status=neq.handed_over&deletion_pending=eq.false`),
+    rest(`/ops_projects?select=id,project_name,next_action,next_action_date,assigned_to&next_action_date=lte.${today}&next_action=not.is.null&status=neq.handed_over`),
   ])
   const production = prod.data || []
   const deletions = del.data || []
-  return { production, deletions, total: production.length + deletions.length }
+  const overdueUpdates = overdue.data || []
+  const actionsDue = nextActionDue.data || []
+  return {
+    production,
+    deletions,
+    overdueUpdates,
+    actionsDue,
+    total: production.length + deletions.length + overdueUpdates.length + actionsDue.length,
+  }
 }
 
 // Deletion approval flow
@@ -427,4 +439,65 @@ export async function denyDeletion(id) {
     deletion_requested_by: null,
     deletion_requested_at: null,
   })
+}
+
+// ─── Activity Log ─────────────────────────────────────────────────────────────
+export async function getProjectActivity(opsProjectId) {
+  return rest(`/project_activity?ops_project_id=eq.${opsProjectId}&order=performed_at.desc&limit=50`)
+}
+export async function logProjectActivity(opsProjectId, action, details, performedBy) {
+  return restPost('/project_activity', {
+    ops_project_id: opsProjectId,
+    action,
+    details: details || null,
+    performed_by: performedBy || null,
+    performed_at: new Date().toISOString(),
+  })
+}
+
+// ─── Comments ─────────────────────────────────────────────────────────────────
+export async function getProjectComments(opsProjectId) {
+  return rest(`/project_comments?ops_project_id=eq.${opsProjectId}&order=created_at.desc`)
+}
+export async function addProjectComment(opsProjectId, comment, author) {
+  return restPost('/project_comments', {
+    ops_project_id: opsProjectId,
+    comment,
+    author,
+    created_at: new Date().toISOString(),
+  })
+}
+export async function deleteProjectComment(id) {
+  return restDelete(`/project_comments?id=eq.${id}`)
+}
+
+// ─── Billing Milestones ───────────────────────────────────────────────────────
+export async function getBillingMilestones(opsProjectId) {
+  return rest(`/billing_milestones?ops_project_id=eq.${opsProjectId}&order=created_at.asc`)
+}
+export async function upsertBillingMilestone(opsProjectId, milestoneType, data) {
+  return rest(`/billing_milestones?ops_project_id=eq.${opsProjectId}&milestone_type=eq.${milestoneType}`, {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify({ ops_project_id: opsProjectId, milestone_type: milestoneType, ...data }),
+  })
+}
+export async function getUnpaidMilestones() {
+  const today = new Date().toISOString().split('T')[0]
+  return rest(`/billing_milestones?select=*,ops_projects(project_name,pic)&status=in.(pending,invoiced)&due_date=lte.${today}&order=due_date.asc`)
+}
+
+// ─── Warranty Alerts ──────────────────────────────────────────────────────────
+export async function getWarrantyAlerts() {
+  const today = new Date().toISOString().split('T')[0]
+  const in7days = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
+  const in10days = new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0]
+  // Expiring within 7 days
+  const expiring = await rest(`/ops_projects?select=id,project_name,maintenance_end_date&maintenance_end_date=gte.${today}&maintenance_end_date=lte.${in7days}&status=neq.handed_over`)
+  // Expired in last 10 days — renewal follow-up for boss
+  const expired = await rest(`/ops_projects?select=id,project_name,maintenance_end_date,renewal_negotiation_status&maintenance_end_date=lt.${today}&maintenance_end_date=gte.${new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0]}&renewal_negotiation_status=in.(none,in_negotiation)`)
+  return {
+    expiring: expiring.data || [],
+    renewalFollowup: expired.data || [],
+  }
 }

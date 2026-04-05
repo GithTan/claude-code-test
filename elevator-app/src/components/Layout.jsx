@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useEffect, useRef, useState } from 'react'
-import { getAlerts, approveDeletion, denyDeletion } from '../lib/api'
+import { getAlerts, approveDeletion, denyDeletion, getWarrantyAlerts } from '../lib/api'
 
 const navItems = [
   { label: '⬡ Start Here', to: '/start' },
@@ -23,14 +23,16 @@ function daysSince(dateStr) {
 }
 
 function NotificationBell({ role }) {
-  const [alerts, setAlerts] = useState({ production: [], deletions: [], total: 0 })
+  const [alerts, setAlerts] = useState({ production: [], deletions: [], overdueUpdates: [], actionsDue: [], total: 0 })
+  const [warranty, setWarranty] = useState({ expiring: [], renewalFollowup: [] })
   const [open, setOpen] = useState(false)
   const [acting, setActing] = useState(null)
   const panelRef = useRef(null)
 
   async function load() {
-    const a = await getAlerts()
+    const [a, w] = await Promise.all([getAlerts(), getWarrantyAlerts()])
     setAlerts(a)
+    setWarranty(w)
   }
 
   useEffect(() => {
@@ -62,7 +64,7 @@ function NotificationBell({ role }) {
     setActing(null)
   }
 
-  const count = alerts.total
+  const count = alerts.total + warranty.expiring.length + (role === 'admin' ? warranty.renewalFollowup.length : 0)
 
   return (
     <div style={{ position: 'relative' }} ref={panelRef}>
@@ -156,6 +158,76 @@ function NotificationBell({ role }) {
                       Deny
                     </button>
                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Overdue updates */}
+          {alerts.overdueUpdates?.length > 0 && (
+            <div>
+              <div style={{ backgroundColor: '#F5F5DC', padding: '8px 16px', borderBottom: '1px solid #E8E0C8' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#8B0000', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  No Update in 7+ Days ({alerts.overdueUpdates.length})
+                </span>
+              </div>
+              {alerts.overdueUpdates.map(p => (
+                <div key={p.id} style={{ padding: '10px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFF8F8' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{p.project_name}</p>
+                  <p style={{ fontSize: 11, color: '#8B0000' }}>Last updated {daysSince(p.last_updated_at)}d ago</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Actions due */}
+          {alerts.actionsDue?.length > 0 && (
+            <div>
+              <div style={{ backgroundColor: '#F5F5DC', padding: '8px 16px', borderBottom: '1px solid #E8E0C8' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#5C4A00', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Next Actions Due ({alerts.actionsDue.length})
+                </span>
+              </div>
+              {alerts.actionsDue.map(p => (
+                <div key={p.id} style={{ padding: '10px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFFBF0' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{p.project_name}</p>
+                  <p style={{ fontSize: 11, color: '#8B4500' }}>→ {p.next_action}</p>
+                  {p.assigned_to && <p style={{ fontSize: 11, color: '#888888' }}>Assigned: {p.assigned_to}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Warranty expiring soon */}
+          {warranty.expiring.length > 0 && (
+            <div>
+              <div style={{ backgroundColor: '#F5F5DC', padding: '8px 16px', borderBottom: '1px solid #E8E0C8' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#5C4A00', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Warranty Expiring Soon ({warranty.expiring.length})
+                </span>
+              </div>
+              {warranty.expiring.map(p => (
+                <div key={p.id} style={{ padding: '10px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFFBF0' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{p.project_name}</p>
+                  <p style={{ fontSize: 11, color: '#8B4500' }}>Warranty ends: {p.maintenance_end_date}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Renewal follow-up — boss only */}
+          {role === 'admin' && warranty.renewalFollowup.length > 0 && (
+            <div>
+              <div style={{ backgroundColor: '#F5F5DC', padding: '8px 16px', borderBottom: '1px solid #E8E0C8' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#8B0000', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Renewal Follow-up — Boss Only ({warranty.renewalFollowup.length})
+                </span>
+              </div>
+              {warranty.renewalFollowup.map(p => (
+                <div key={p.id} style={{ padding: '10px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFF8F8' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{p.project_name}</p>
+                  <p style={{ fontSize: 11, color: '#8B0000' }}>Warranty expired. Has client signed renewal?</p>
+                  <p style={{ fontSize: 11, color: '#888888' }}>Status: {p.renewal_negotiation_status?.replace(/_/g, ' ') || 'None'}</p>
                 </div>
               ))}
             </div>

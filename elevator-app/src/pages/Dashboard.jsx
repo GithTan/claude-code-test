@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   getAllMaintenanceSchedules, getExpiringAmcContracts, getJobs,
   getOpenBreakdowns, getOverdueMaintenance, getUnpaidInvoices,
-  getPipelines, PIPELINE_STEPS,
+  getPipelines, PIPELINE_STEPS, getOpsProjects, getUnpaidMilestones, getAlerts,
 } from '../lib/api'
 
 const STEP_LABELS = Object.fromEntries(PIPELINE_STEPS.map(s => [s.number, s.label]))
@@ -43,6 +43,9 @@ export default function Dashboard() {
   const [expiringContracts, setExpiringContracts] = useState([])
   const [pipelines, setPipelines] = useState([])
   const [showPipelines, setShowPipelines] = useState(false)
+  const [opsProjects, setOpsProjects] = useState([])
+  const [unpaidMilestones, setUnpaidMilestones] = useState([])
+  const [alerts, setAlerts] = useState({ production: [], deletions: [], overdueUpdates: [], actionsDue: [], total: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -53,9 +56,12 @@ export default function Dashboard() {
       getOpenBreakdowns().then(({ data }) => setOpenBreakdowns(data || [])),
       getExpiringAmcContracts().then(({ data }) => setExpiringContracts(data || [])),
       getPipelines().then(({ data }) => setPipelines((data || []).filter(p => p.status !== 'completed'))),
+      getOpsProjects().then(({ data }) => setOpsProjects(data || [])),
+      getAlerts().then(a => setAlerts(a)),
     ]
     if (isAdmin) {
       fetches.push(getUnpaidInvoices().then(({ data }) => setUnpaidInvoices(data || [])))
+      fetches.push(getUnpaidMilestones().then(({ data }) => setUnpaidMilestones(data || [])))
     }
     Promise.all(fetches).then(() => setLoading(false))
   }, [isAdmin])
@@ -242,6 +248,70 @@ export default function Dashboard() {
           </Link>
         </div>
       )}
+
+      {/* ── Role-based Project Status Summary ── */}
+      {(() => {
+        const active = opsProjects.filter(p => p.status !== 'handed_over')
+        const needsAction = active.filter(p => p.next_action_date && p.next_action_date <= today)
+        const noUpdate = active.filter(p => p.last_updated_at && (Date.now() - new Date(p.last_updated_at)) > 7 * 86400000)
+        const inProd = active.filter(p => p.status === 'on_going_production')
+        const blocked = active.filter(p => p.health === 'blocked' || p.health === 'overdue')
+        return (
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Project Status Overview</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
+              {[
+                { label: 'Active Projects', value: active.length, to: '/operations', color: '#2C2C2C' },
+                { label: 'Actions Due', value: needsAction.length, to: '/operations', color: needsAction.length > 0 ? '#8B4500' : '#2C2C2C' },
+                { label: 'No Update 7d+', value: noUpdate.length, to: '/operations', color: noUpdate.length > 0 ? '#8B0000' : '#2C2C2C' },
+                { label: 'Blocked / Overdue', value: blocked.length, to: '/operations', color: blocked.length > 0 ? '#8B0000' : '#2C2C2C' },
+              ].map(s => (
+                <Link key={s.label} to={s.to} style={{ textDecoration: 'none' }}>
+                  <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: '14px 16px', textAlign: 'center' }}>
+                    <p style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value}</p>
+                    <p style={{ fontSize: 11, color: '#888888', marginTop: 2 }}>{s.label}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {/* Actions due list */}
+            {needsAction.length > 0 && (
+              <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 16, marginBottom: 10 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#8B4500', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions Due Today</p>
+                {needsAction.slice(0, 5).map(p => (
+                  <Link key={p.id} to={`/operations/${p.id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #E8E0C8', textDecoration: 'none' }}>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{p.project_name}</p>
+                      <p style={{ fontSize: 12, color: '#8B4500' }}>→ {p.next_action}</p>
+                    </div>
+                    {p.assigned_to && <span style={{ fontSize: 11, color: '#888888' }}>{p.assigned_to}</span>}
+                  </Link>
+                ))}
+                {needsAction.length > 5 && <Link to="/operations" style={{ fontSize: 12, color: '#D4AF37', fontWeight: 600 }}>+{needsAction.length - 5} more →</Link>}
+              </div>
+            )}
+
+            {/* Finance: unpaid milestones */}
+            {isAdmin && unpaidMilestones.length > 0 && (
+              <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 16 }}>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#8B0000', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Overdue Billing Milestones ({unpaidMilestones.length})
+                </p>
+                {unpaidMilestones.slice(0, 4).map(m => (
+                  <Link key={m.id} to={`/operations/${m.ops_project_id}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #E8E0C8', textDecoration: 'none' }}>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{m.ops_projects?.project_name}</p>
+                      <p style={{ fontSize: 11, color: '#888888' }}>{m.milestone_type?.replace(/_/g, ' ')}</p>
+                    </div>
+                    {m.amount && <span style={{ fontSize: 13, fontWeight: 700, color: '#8B0000' }}>₱{Number(m.amount).toLocaleString('en-PH')}</span>}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }
