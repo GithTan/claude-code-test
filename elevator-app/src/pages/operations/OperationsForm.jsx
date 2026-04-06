@@ -5,6 +5,7 @@ import {
   requestDeletion, createAmcContract, getOpsProjectUnits, createProjectUnits, deleteOpsProjectUnits,
 } from '../../lib/api'
 import { OPS_STATUSES, statusDef } from './OperationsList'
+import { TEAM_MEMBERS } from './OpsProjectDetail'
 import { useAuth } from '../../contexts/AuthContext'
 
 const DRIVE_TYPES = [
@@ -321,8 +322,10 @@ export default function OperationsForm() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label style={labelStyle}>Project-in-charge (PIC)</label>
-              <input name="pic" value={form.pic} onChange={handleChange}
-                placeholder="e.g. Vic, Jonathan, Chel" style={inputStyle} />
+              <select name="pic" value={form.pic} onChange={handleChange} style={inputStyle}>
+                <option value="">Select PIC…</option>
+                {TEAM_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
             </div>
             <div>
               <label style={labelStyle}>Subcon</label>

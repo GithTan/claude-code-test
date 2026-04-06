@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getOpsProjects } from '../../lib/api'
+import { TEAM_MEMBERS } from './OpsProjectDetail'
 
 // Handed over projects are moved to Finished Projects page
 
@@ -67,8 +68,7 @@ export default function OperationsList() {
 
   const activeCount = projects.length
 
-  // Unique PICs for filter dropdown
-  const pics = ['all', ...new Set(projects.map(p => p.pic).filter(Boolean).sort())]
+  const pics = ['all', ...TEAM_MEMBERS]
 
   const filtered = projects
     .filter(p => filter === 'all' || p.status === filter)
@@ -202,9 +202,10 @@ export default function OperationsList() {
                           {p.project_start_date || '—'} → {p.project_end_date || 'ongoing'}
                         </p>
                       )}
-                      {p.next_action && (
-                        <p style={{ fontSize: 11, color: '#8B4500', marginTop: 3 }}>→ {p.next_action}</p>
-                      )}
+                      {p.next_action
+                        ? <p style={{ fontSize: 11, color: '#8B4500', marginTop: 3 }}>→ {p.next_action}{p.assigned_to ? ` · ${p.assigned_to}` : ''}</p>
+                        : <p style={{ fontSize: 11, color: '#CC8800', marginTop: 3, fontStyle: 'italic' }}>No next action — needs owner</p>
+                      }
                     </td>
                     <td style={{ ...tdStyle, fontWeight: 600 }}>{p.pic || '—'}</td>
                     <td style={tdStyle}>

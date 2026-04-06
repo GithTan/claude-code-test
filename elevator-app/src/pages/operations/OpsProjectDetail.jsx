@@ -9,6 +9,8 @@ import {
 import { useAuth } from '../../contexts/AuthContext'
 import { OPS_STATUSES, statusDef } from './OperationsList'
 
+export const TEAM_MEMBERS = ['Chel', 'Vic', 'Jose', 'Isza', 'Jonathan']
+
 const HEALTH = {
   on_track:        { label: 'On Track',        bg: '#2C2C2C', color: '#D4AF37' },
   needs_attention: { label: 'Needs Attention', bg: '#5C4A00', color: '#F5D87A' },
@@ -184,6 +186,27 @@ export default function OpsProjectDetail() {
         </Link>
       </div>
 
+      {/* No owner warning */}
+      {project.status !== 'handed_over' && (!project.next_action || !project.assigned_to) && (
+        <div style={{ backgroundColor: '#FFF8E8', border: '2px solid #D4AF37', padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 18 }}>⚠</span>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>This project has no owner</p>
+            <p style={{ fontSize: 12, color: '#8B4500' }}>
+              {!project.next_action && !project.assigned_to
+                ? "Set a next action and assign it to someone so this project doesn't go stale."
+                : !project.next_action
+                ? 'No next action set — what needs to happen next?'
+                : 'Not assigned to anyone — who owns the next step?'}
+            </p>
+          </div>
+          <button onClick={() => setEditingNextAction(true)}
+            style={{ marginLeft: 'auto', backgroundColor: '#D4AF37', color: '#2C2C2C', border: 'none', padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            Set now →
+          </button>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {/* LEFT COLUMN */}
         <div>
@@ -215,8 +238,10 @@ export default function OpsProjectDetail() {
                   placeholder="What needs to happen next?" style={inputStyle} />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <input type="date" value={nextActionDate} onChange={e => setNextActionDate(e.target.value)} style={inputStyle} />
-                  <input value={assignedTo} onChange={e => setAssignedTo(e.target.value)}
-                    placeholder="Assigned to (name/dept)" style={inputStyle} />
+                  <select value={assignedTo} onChange={e => setAssignedTo(e.target.value)} style={inputStyle}>
+                    <option value="">Assign to…</option>
+                    {TEAM_MEMBERS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={saveNextAction}
