@@ -171,9 +171,6 @@ export default function Dashboard() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
             <p style={{ color: '#2C2C2C', fontWeight: 700, fontSize: 15 }}>Needs to be Addressed</p>
-            <p style={{ color: '#888888', fontSize: 12, marginTop: 2 }}>
-              Items auto-expire in 3 days. Check off when done — it records who cleared it.
-            </p>
           </div>
           {actionItems.length > 0 && (
             <span style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', fontWeight: 700, fontSize: 12, padding: '3px 9px' }}>

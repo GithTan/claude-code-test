@@ -448,6 +448,9 @@ export async function denyDeletion(id) {
 export async function getProjectUnits(pipelineId) {
   return rest(`/project_units?pipeline_id=eq.${pipelineId}&order=unit_number.asc`)
 }
+export async function getOpsProjectUnits(opsProjectId) {
+  return rest(`/project_units?ops_project_id=eq.${opsProjectId}&order=unit_number.asc`)
+}
 export async function createProjectUnits(units) {
   return rest('/project_units', { method: 'POST', body: JSON.stringify(units) })
 }
@@ -456,6 +459,9 @@ export async function updateProjectUnit(id, data) {
 }
 export async function deleteProjectUnit(id) {
   return restDelete(`/project_units?id=eq.${id}`)
+}
+export async function deleteOpsProjectUnits(opsProjectId) {
+  return restDelete(`/project_units?ops_project_id=eq.${opsProjectId}`)
 }
 
 // ─── Action Items (Needs to be Addressed) ────────────────────────────────────
