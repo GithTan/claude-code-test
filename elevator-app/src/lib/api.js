@@ -390,7 +390,13 @@ export async function resetPipelineToStep(pipelineId, stepNumber) {
 
 // ─── Operations Projects ──────────────────────────────────────────────────────
 export async function getOpsProjects() {
-  return rest('/ops_projects?select=*,project_units(unit_number,unit_label,specs,brand,drive_type,use_type,stops,openings,floors)&order=created_at.desc')
+  // Note: project_units join requires phase2b-schema.sql to be run first.
+  // Falls back to plain select if join fails (ops_project_id column missing).
+  const withUnits = await rest('/ops_projects?select=*,project_units(unit_number,unit_label,specs,brand,drive_type,use_type,stops,openings,floors)&order=created_at.desc')
+  if (withUnits.error) {
+    return rest('/ops_projects?select=*&order=created_at.desc')
+  }
+  return withUnits
 }
 export async function getOpsProject(id) {
   return restOne(`/ops_projects?select=*&id=eq.${id}`)
