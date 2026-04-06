@@ -1,20 +1,181 @@
 // elevator-app/src/pages/pipeline/PipelineForm.jsx
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createPipeline, createPipelineSteps, logActivity, createProject } from '../../lib/api'
+import { createPipeline, createPipelineSteps, createProjectUnits, logActivity, createProject } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 
-const ELEVATOR_TYPES = [
-  { value: 'passenger', label: 'Passenger Elevator' },
-  { value: 'home_elevator', label: 'Home Elevator' },
-  { value: 'escalator', label: 'Escalator' },
+const inputStyle = {
+  width: '100%', border: '1px solid #D4AF37', backgroundColor: '#FFFFFF',
+  color: '#2C2C2C', padding: '8px 12px', fontSize: 14, outline: 'none',
+}
+const labelStyle = { display: 'block', fontSize: 13, fontWeight: 600, color: '#2C2C2C', marginBottom: 4 }
+const sectionStyle = { backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24 }
+const sectionTitle = { fontSize: 13, fontWeight: 700, color: '#2C2C2C', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16 }
+
+const DRIVE_TYPES = [
+  { value: 'traction', label: 'Traction Elevator' },
+  { value: 'platform', label: 'Platform Elevator' },
+  { value: 'hydraulic', label: 'Hydraulic Elevator' },
+]
+const USE_TYPES = [
+  { value: 'passenger', label: 'Passenger' },
+  { value: 'service', label: 'Service' },
 ]
 
-const HOME_ELEVATOR_TYPES = [
-  { value: 'traction', label: 'Traction' },
-  { value: 'hydraulic', label: 'Hydraulic' },
-  { value: 'platform', label: 'Platform' },
-]
+function defaultUnit(n) {
+  return {
+    unit_number: n,
+    unit_label: '',
+    is_home_elevator: false,
+    drive_type: '',
+    use_type: 'passenger',
+    with_structure: false,
+    brand: '',
+    stops: '',
+    openings: '',
+    floors: '',
+  }
+}
+
+function UnitCard({ unit, index, onChange, onRemove, canRemove }) {
+  const isPlatform = unit.drive_type === 'platform'
+
+  function set(field, value) {
+    const updated = { ...unit, [field]: value }
+    // Platform always has structure
+    if (field === 'drive_type' && value === 'platform') updated.with_structure = true
+    onChange(index, updated)
+  }
+
+  return (
+    <div style={{ border: '1px solid #D4AF37', padding: 20, marginBottom: 12, backgroundColor: '#FFFFFF', position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C' }}>Unit {unit.unit_number}</p>
+        {canRemove && (
+          <button type="button" onClick={() => onRemove(index)}
+            style={{ fontSize: 12, color: '#8B0000', border: '1px solid #8B0000', padding: '3px 8px', background: 'none', cursor: 'pointer' }}>
+            Remove
+          </button>
+        )}
+      </div>
+
+      {/* Drive Type */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={labelStyle}>Drive Type</label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {DRIVE_TYPES.map(t => (
+            <button key={t.value} type="button" onClick={() => set('drive_type', t.value)}
+              style={{
+                padding: '8px 6px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                backgroundColor: unit.drive_type === t.value ? '#2C2C2C' : '#FFFFFF',
+                color: unit.drive_type === t.value ? '#D4AF37' : '#888888',
+                border: `1px solid ${unit.drive_type === t.value ? '#2C2C2C' : '#D4AF37'}`,
+              }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {isPlatform && (
+          <p style={{ fontSize: 11, color: '#D4AF37', marginTop: 6, fontWeight: 600 }}>
+            Platform elevator always comes as an asset — With Structure is auto-set.
+          </p>
+        )}
+      </div>
+
+      {/* Use Type */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label style={labelStyle}>Use Type</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {USE_TYPES.map(t => (
+              <button key={t.value} type="button" onClick={() => set('use_type', t.value)}
+                style={{
+                  flex: 1, padding: '8px 6px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  backgroundColor: unit.use_type === t.value ? '#D4AF37' : '#FFFFFF',
+                  color: unit.use_type === t.value ? '#2C2C2C' : '#888888',
+                  border: `1px solid #D4AF37`,
+                }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Structure */}
+        <div>
+          <label style={labelStyle}>Structure</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[{ value: true, label: 'With Structure' }, { value: false, label: 'No Structure' }].map(opt => (
+              <button key={String(opt.value)} type="button"
+                onClick={() => !isPlatform && set('with_structure', opt.value)}
+                disabled={isPlatform}
+                style={{
+                  flex: 1, padding: '8px 6px', fontSize: 12, fontWeight: 600,
+                  cursor: isPlatform ? 'not-allowed' : 'pointer',
+                  backgroundColor: unit.with_structure === opt.value ? '#D4AF37' : '#FFFFFF',
+                  color: unit.with_structure === opt.value ? '#2C2C2C' : isPlatform ? '#CCCCCC' : '#888888',
+                  border: `1px solid ${isPlatform ? '#CCCCCC' : '#D4AF37'}`,
+                  opacity: isPlatform && !opt.value ? 0.4 : 1,
+                }}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Home Elevator toggle */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={labelStyle}>Home Elevator?</label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[{ value: true, label: 'Yes — Home Elevator' }, { value: false, label: 'No' }].map(opt => (
+            <button key={String(opt.value)} type="button" onClick={() => set('is_home_elevator', opt.value)}
+              style={{
+                padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                backgroundColor: unit.is_home_elevator === opt.value ? '#2C2C2C' : '#FFFFFF',
+                color: unit.is_home_elevator === opt.value ? '#D4AF37' : '#888888',
+                border: `1px solid ${unit.is_home_elevator === opt.value ? '#2C2C2C' : '#D4AF37'}`,
+              }}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Brand + Label + Stops/Openings/Floors */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div>
+          <label style={labelStyle}>Brand</label>
+          <input value={unit.brand} onChange={e => set('brand', e.target.value)}
+            placeholder="e.g. KONE, Otis, Hyundai" style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Unit Label</label>
+          <input value={unit.unit_label} onChange={e => set('unit_label', e.target.value)}
+            placeholder="e.g. PE1, HE1" style={inputStyle} />
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+        <div>
+          <label style={labelStyle}>Stops</label>
+          <input type="number" min="0" value={unit.stops} onChange={e => set('stops', e.target.value)}
+            placeholder="e.g. 4" style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Openings</label>
+          <input type="number" min="0" value={unit.openings} onChange={e => set('openings', e.target.value)}
+            placeholder="e.g. 4" style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Floors</label>
+          <input type="number" min="0" value={unit.floors} onChange={e => set('floors', e.target.value)}
+            placeholder="e.g. 4" style={inputStyle} />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function PipelineForm() {
   const { user } = useAuth()
@@ -23,26 +184,34 @@ export default function PipelineForm() {
     project_name: '',
     contract_amount: '',
     vat_inclusive: true,
-    elevator_type: 'passenger',
-    home_elevator_type: '',
-    with_structure: null,
-    unit_count: 1,
   })
+  const [units, setUnits] = useState([defaultUnit(1)])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
-  const isHomeElevator = form.elevator_type === 'home_elevator'
+  function updateUnit(index, updated) {
+    setUnits(u => u.map((unit, i) => i === index ? updated : unit))
+  }
+
+  function addUnit() {
+    setUnits(u => [...u, defaultUnit(u.length + 1)])
+  }
+
+  function removeUnit(index) {
+    setUnits(u => {
+      const next = u.filter((_, i) => i !== index)
+      return next.map((unit, i) => ({ ...unit, unit_number: i + 1 }))
+    })
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.project_name.trim()) { setError('Please enter a project name.'); return }
-    if (isHomeElevator && !form.home_elevator_type) { setError('Please select a home elevator type.'); return }
-    if (isHomeElevator && form.with_structure === null) { setError('Please select With or No Structure.'); return }
 
     setSaving(true)
     setError(null)
 
-    // Create the project first
+    // Create the installation project
     const { data: project, error: projErr } = await createProject({
       project_name: form.project_name.trim(),
       status: 'active',
@@ -51,155 +220,122 @@ export default function PipelineForm() {
     })
     if (projErr) { setError(projErr.message); setSaving(false); return }
 
-    // Create the pipeline linked to the new project
+    // Create the pipeline
+    const firstUnit = units[0]
     const { data: pipeline, error: pErr } = await createPipeline({
       project_id: project.id,
-      elevator_type: form.elevator_type,
-      home_elevator_type: isHomeElevator ? form.home_elevator_type : null,
-      with_structure: isHomeElevator ? form.with_structure : null,
-      unit_count: form.unit_count,
+      elevator_type: firstUnit.is_home_elevator ? 'home_elevator' : (firstUnit.use_type || 'passenger'),
+      home_elevator_type: firstUnit.is_home_elevator ? (firstUnit.drive_type || null) : null,
+      with_structure: firstUnit.with_structure,
+      unit_count: units.length,
       project_type: 'new_installation',
       supplier: '',
       created_by: user?.id,
     })
     if (pErr) { setError(pErr.message); setSaving(false); return }
 
+    // Create pipeline steps
     await createPipelineSteps(pipeline.id)
+
+    // Create unit records
+    const unitRecords = units.map(u => ({
+      pipeline_id: pipeline.id,
+      unit_number: u.unit_number,
+      unit_label: u.unit_label || null,
+      is_home_elevator: u.is_home_elevator,
+      with_structure: u.with_structure,
+      drive_type: u.drive_type || null,
+      use_type: u.use_type || null,
+      brand: u.brand || null,
+      stops: u.stops ? parseInt(u.stops) : null,
+      openings: u.openings ? parseInt(u.openings) : null,
+      floors: u.floors ? parseInt(u.floors) : null,
+    }))
+    await createProjectUnits(unitRecords)
+
     await logActivity(pipeline.id, null, 'pipeline_created', 'Pipeline created', {
-      elevator_type: form.elevator_type,
-      unit_count: form.unit_count,
+      unit_count: units.length,
+      brands: units.map(u => u.brand).filter(Boolean),
     })
 
     navigate(`/pipeline/${pipeline.id}`)
   }
 
   return (
-    <div className="max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Start New Pipeline</h1>
+    <div style={{ maxWidth: 640 }}>
+      <h1 className="text-2xl font-bold mb-6" style={{ color: '#2C2C2C' }}>Start New Pipeline</h1>
 
-      {error && <p className="text-red-600 mb-4 text-sm">{error}</p>}
+      {error && <p style={{ color: '#8B0000', fontSize: 13, marginBottom: 16 }}>{error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-5">
 
-        {/* Project Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
-          <input
-            type="text"
-            placeholder="e.g. SM Aura Tower Block B"
-            value={form.project_name}
-            onChange={e => setForm(f => ({ ...f, project_name: e.target.value }))}
-            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            autoFocus
-          />
-        </div>
+        {/* Project Info */}
+        <div style={sectionStyle}>
+          <p style={sectionTitle}>Project Info</p>
 
-        {/* Contract Amount */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Contract Amount</label>
-          <div className="flex gap-2 items-center">
-            <span className="text-sm text-gray-500">₱</span>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              value={form.contract_amount}
-              onChange={e => setForm(f => ({ ...f, contract_amount: e.target.value }))}
-              className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <div className="flex rounded border border-gray-300 overflow-hidden text-sm">
-              <button type="button"
-                onClick={() => setForm(f => ({ ...f, vat_inclusive: true }))}
-                className={`px-3 py-2 font-medium transition-colors ${form.vat_inclusive ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-                VAT Inc.
-              </button>
-              <button type="button"
-                onClick={() => setForm(f => ({ ...f, vat_inclusive: false }))}
-                className={`px-3 py-2 font-medium transition-colors ${!form.vat_inclusive ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-                Non-VAT
-              </button>
-            </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={labelStyle}>Project Name *</label>
+            <input value={form.project_name}
+              onChange={e => setForm(f => ({ ...f, project_name: e.target.value }))}
+              placeholder="e.g. SM Aura Tower Block B" style={inputStyle} required autoFocus />
           </div>
-        </div>
 
-        {/* Elevator Type */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Elevator Type</label>
-          <div className="grid grid-cols-3 gap-2">
-            {ELEVATOR_TYPES.map(t => (
-              <button key={t.value} type="button"
-                onClick={() => setForm(f => ({ ...f, elevator_type: t.value, home_elevator_type: '', with_structure: null }))}
-                className={`py-2 px-3 rounded border text-sm font-medium transition-colors ${
-                  form.elevator_type === t.value
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                }`}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Home Elevator sub-options */}
-        {isHomeElevator && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Home Elevator Type</label>
-              <div className="grid grid-cols-3 gap-2">
-                {HOME_ELEVATOR_TYPES.map(t => (
-                  <button key={t.value} type="button"
-                    onClick={() => setForm(f => ({ ...f, home_elevator_type: t.value }))}
-                    className={`py-2 px-3 rounded border text-sm font-medium transition-colors ${
-                      form.home_elevator_type === t.value
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                    }`}>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Structure</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[{ value: true, label: 'With Structure' }, { value: false, label: 'No Structure' }].map(opt => (
-                  <button key={String(opt.value)} type="button"
-                    onClick={() => setForm(f => ({ ...f, with_structure: opt.value }))}
-                    className={`py-2 px-3 rounded border text-sm font-medium transition-colors ${
-                      form.with_structure === opt.value
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                    }`}>
+          <div>
+            <label style={labelStyle}>Contract Amount</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <span style={{ fontSize: 14, color: '#888888' }}>₱</span>
+              <input type="number" min="0" step="0.01" placeholder="0.00"
+                value={form.contract_amount}
+                onChange={e => setForm(f => ({ ...f, contract_amount: e.target.value }))}
+                style={{ ...inputStyle, flex: 1 }} />
+              <div style={{ display: 'flex', border: '1px solid #D4AF37', overflow: 'hidden' }}>
+                {[{ label: 'VAT Inc.', v: true }, { label: 'Non-VAT', v: false }].map(opt => (
+                  <button key={String(opt.v)} type="button"
+                    onClick={() => setForm(f => ({ ...f, vat_inclusive: opt.v }))}
+                    style={{
+                      padding: '8px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      backgroundColor: form.vat_inclusive === opt.v ? '#D4AF37' : '#FFFFFF',
+                      color: form.vat_inclusive === opt.v ? '#2C2C2C' : '#888888',
+                      border: 'none',
+                    }}>
                     {opt.label}
                   </button>
                 ))}
               </div>
             </div>
-          </>
-        )}
-
-        {/* Number of Units */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Number of Units</label>
-          <input
-            type="number"
-            min="1"
-            max="100"
-            value={form.unit_count}
-            onChange={e => setForm(f => ({ ...f, unit_count: parseInt(e.target.value) || 1 }))}
-            className="w-32 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          </div>
         </div>
 
-        <div className="flex gap-3 pt-2">
+        {/* Unit Specs */}
+        <div style={sectionStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <p style={sectionTitle}>Unit Specifications</p>
+            <span style={{ fontSize: 12, color: '#888888' }}>{units.length} unit{units.length !== 1 ? 's' : ''}</span>
+          </div>
+          <p style={{ fontSize: 12, color: '#888888', marginBottom: 16, marginTop: -12 }}>
+            Each unit can have different specs. Add a unit for each elevator in this project.
+          </p>
+
+          {units.map((unit, i) => (
+            <UnitCard key={i} unit={unit} index={i}
+              onChange={updateUnit}
+              onRemove={removeUnit}
+              canRemove={units.length > 1} />
+          ))}
+
+          <button type="button" onClick={addUnit}
+            style={{ width: '100%', padding: '10px', fontSize: 13, fontWeight: 600, cursor: 'pointer', backgroundColor: '#FFFFFF', color: '#D4AF37', border: '2px dashed #D4AF37' }}>
+            + Add Another Unit
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, paddingTop: 8 }}>
           <button type="submit" disabled={saving}
-            className="bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 text-sm disabled:opacity-50">
+            style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '10px 24px', fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}>
             {saving ? 'Creating…' : 'Start Pipeline'}
           </button>
           <button type="button" onClick={() => navigate('/pipeline')}
-            className="text-gray-600 px-5 py-2 rounded border border-gray-300 hover:bg-gray-50 text-sm">
+            style={{ backgroundColor: '#FFFFFF', color: '#2C2C2C', padding: '10px 24px', border: '1px solid #D4AF37', fontSize: 14, cursor: 'pointer' }}>
             Cancel
           </button>
         </div>

@@ -36,6 +36,7 @@ import StartHere from './pages/StartHere'
 import OperationsList from './pages/operations/OperationsList'
 import OperationsForm from './pages/operations/OperationsForm'
 import OpsProjectDetail from './pages/operations/OpsProjectDetail'
+import FinishedProjects from './pages/operations/FinishedProjects'
 
 function ProtectedLayout() {
   return (
@@ -85,6 +86,7 @@ function AppRoutes() {
         <Route path="/contracts/:id" element={<AmcDetail />} />
         <Route path="/contracts/:id/edit" element={<AmcForm />} />
         <Route path="/operations" element={<OperationsList />} />
+        <Route path="/operations/finished" element={<FinishedProjects />} />
         <Route path="/operations/new" element={<OperationsForm />} />
         <Route path="/operations/:id" element={<OpsProjectDetail />} />
         <Route path="/operations/:id/edit" element={<OperationsForm />} />

@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build outputs
+dist/
+build/
+out/
+.turbo/
+.cache/
+
+# Logs and temp
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+*.swp
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+*.key
+credentials.json
+
+# Large generated files
+*.map
+package-lock.json
+
+# Supabase temp
+supabase/.temp/

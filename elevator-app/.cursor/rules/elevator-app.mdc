@@ -1,0 +1,25 @@
+You are building a web app for an elevator service company in the Philippines.
+
+Tech stack: React 18 + Vite, JavaScript (no TypeScript), Tailwind CSS, Supabase (auth + database + storage), React Router v6, deployed on Vercel.
+
+Design system:
+- Gold: #D4AF37, Beige: #F5F5DC, Dark gray: #2C2C2C, Muted: #888888, Error red: #8B0000
+- Fonts: Tahoma (body), Georgia (headings)
+- No rounded corners, no shadows — flat bordered cards with gold border (#D4AF37)
+- Buttons: gold background (#D4AF37) + dark text (#2C2C2C), or white with gold border
+
+Key principles:
+- Keep files under 200 lines when possible.
+- All API calls go in src/lib/api.js using the Supabase client.
+- Auth context is in src/contexts/AuthContext.jsx — use useAuth() hook for role/user.
+- Roles: admin (Boss, full access), operations (field ops, limited access).
+- Pages follow the pattern: List → Detail → Form (create/edit).
+- Gate-based pipeline is the core UX — steps must be completed in sequence.
+
+Domain terms: pipeline, step, gate, PIC (project-in-charge), subcon, T&C (testing & commissioning), handover, AMC (maintenance contract), breakdown call.
+
+When making changes:
+- Only modify files that actually need changes.
+- Match the existing gold/beige design exactly — no new color schemes.
+- Be concise. No unnecessary explanations unless asked.
+- Output production-ready code that fits existing patterns.

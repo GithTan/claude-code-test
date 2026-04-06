@@ -5,6 +5,7 @@ import {
   getAllMaintenanceSchedules, getExpiringAmcContracts, getJobs,
   getOpenBreakdowns, getOverdueMaintenance, getUnpaidInvoices,
   getPipelines, PIPELINE_STEPS, getOpsProjects, getUnpaidMilestones, getAlerts,
+  getActionItems, createActionItem, checkOffActionItem,
 } from '../lib/api'
 
 const STEP_LABELS = Object.fromEntries(PIPELINE_STEPS.map(s => [s.number, s.label]))
@@ -46,6 +47,9 @@ export default function Dashboard() {
   const [opsProjects, setOpsProjects] = useState([])
   const [unpaidMilestones, setUnpaidMilestones] = useState([])
   const [alerts, setAlerts] = useState({ production: [], deletions: [], overdueUpdates: [], actionsDue: [], total: 0 })
+  const [actionItems, setActionItems] = useState([])
+  const [newActionText, setNewActionText] = useState('')
+  const [addingAction, setAddingAction] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -56,8 +60,9 @@ export default function Dashboard() {
       getOpenBreakdowns().then(({ data }) => setOpenBreakdowns(data || [])),
       getExpiringAmcContracts().then(({ data }) => setExpiringContracts(data || [])),
       getPipelines().then(({ data }) => setPipelines((data || []).filter(p => p.status !== 'completed'))),
-      getOpsProjects().then(({ data }) => setOpsProjects(data || [])),
+      getOpsProjects().then(({ data }) => setOpsProjects((data || []).filter(p => p.status !== 'handed_over'))),
       getAlerts().then(a => setAlerts(a)),
+      getActionItems().then(({ data }) => setActionItems(data || [])),
     ]
     if (isAdmin) {
       fetches.push(getUnpaidInvoices().then(({ data }) => setUnpaidInvoices(data || [])))
@@ -65,6 +70,24 @@ export default function Dashboard() {
     }
     Promise.all(fetches).then(() => setLoading(false))
   }, [isAdmin])
+
+  async function handleAddAction(e) {
+    e.preventDefault()
+    if (!newActionText.trim()) return
+    setAddingAction(true)
+    const name = role === 'admin' ? 'Boss' : 'Staff'
+    await createActionItem(newActionText.trim(), name)
+    const { data } = await getActionItems()
+    setActionItems(data || [])
+    setNewActionText('')
+    setAddingAction(false)
+  }
+
+  async function handleCheckOff(id) {
+    const name = role === 'admin' ? 'Boss' : 'Staff'
+    await checkOffActionItem(id, name)
+    setActionItems(items => items.filter(i => i.id !== id))
+  }
 
   if (loading) return <p style={{ color: '#888888' }}>Loading…</p>
 
@@ -141,6 +164,67 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Needs to be Addressed */}
+      <div style={{ backgroundColor: '#F5F5DC', border: '2px solid #D4AF37', padding: 24, marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div>
+            <p style={{ color: '#2C2C2C', fontWeight: 700, fontSize: 15 }}>Needs to be Addressed</p>
+            <p style={{ color: '#888888', fontSize: 12, marginTop: 2 }}>
+              Items auto-expire in 3 days. Check off when done — it records who cleared it.
+            </p>
+          </div>
+          {actionItems.length > 0 && (
+            <span style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', fontWeight: 700, fontSize: 12, padding: '3px 9px' }}>
+              {actionItems.length} open
+            </span>
+          )}
+        </div>
+
+        {actionItems.length === 0 && (
+          <p style={{ color: '#888888', fontSize: 13, marginBottom: 12 }}>No open items. Add something below.</p>
+        )}
+
+        {actionItems.map(item => {
+          const daysLeft = item.expires_at
+            ? Math.ceil((new Date(item.expires_at) - Date.now()) / 86400000)
+            : null
+          return (
+            <div key={item.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderBottom: '1px solid #E8E0C8' }}>
+              <button onClick={() => handleCheckOff(item.id)}
+                style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, marginTop: 1, cursor: 'pointer', backgroundColor: '#FFFFFF', border: '2px solid #D4AF37', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Mark as addressed">
+                <span style={{ fontSize: 12, color: '#D4AF37', fontWeight: 700 }}>✓</span>
+              </button>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 13, color: '#2C2C2C', fontWeight: 500 }}>{item.text}</p>
+                <p style={{ fontSize: 11, color: '#888888', marginTop: 2 }}>
+                  Added by {item.created_by_name || 'Staff'}
+                  {daysLeft !== null && (
+                    <span style={{ color: daysLeft <= 1 ? '#8B0000' : '#888888', marginLeft: 8, fontWeight: daysLeft <= 1 ? 700 : 400 }}>
+                      · {daysLeft <= 0 ? 'Expiring now' : `${daysLeft}d left`}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Add new item */}
+        <form onSubmit={handleAddAction} style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <input
+            value={newActionText}
+            onChange={e => setNewActionText(e.target.value)}
+            placeholder="Type something that needs to be addressed…"
+            style={{ flex: 1, border: '1px solid #D4AF37', backgroundColor: '#FFFFFF', color: '#2C2C2C', padding: '8px 12px', fontSize: 13, outline: 'none' }}
+          />
+          <button type="submit" disabled={addingAction || !newActionText.trim()}
+            style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 16px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', opacity: (!newActionText.trim() || addingAction) ? 0.5 : 1 }}>
+            Add
+          </button>
+        </form>
       </div>
 
       {/* Stats grid */}

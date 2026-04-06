@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getOpsProjects } from '../../lib/api'
 
+// Handed over projects are moved to Finished Projects page
+
 export const OPS_STATUSES = [
   { value: 'on_going_production',          label: 'On-Going Production',           bg: '#1A2A4A', color: '#7EB8F7' },
   { value: 'for_delivery',                 label: 'For Delivery / Shipment',       bg: '#4A3A00', color: '#F5D87A' },
@@ -54,13 +56,16 @@ export default function OperationsList() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getOpsProjects().then(({ data }) => { setProjects(data || []); setLoading(false) })
+    // Only load active (non-handed-over) projects
+    getOpsProjects().then(({ data }) => {
+      setProjects((data || []).filter(p => p.status !== 'handed_over'))
+      setLoading(false)
+    })
   }, [])
 
   if (loading) return <p style={{ color: '#888888' }}>Loading…</p>
 
-  const activeCount = projects.filter(p => p.status !== 'handed_over').length
-  const handedOverCount = projects.filter(p => p.status === 'handed_over').length
+  const activeCount = projects.length
 
   // Unique PICs for filter dropdown
   const pics = ['all', ...new Set(projects.map(p => p.pic).filter(Boolean).sort())]
@@ -86,13 +91,19 @@ export default function OperationsList() {
     <div>
       <div className="flex justify-between items-center mb-1">
         <h1 className="text-2xl font-bold" style={{ color: '#2C2C2C' }}>Project Status</h1>
-        <Link to="/operations/new"
-          style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>
-          + Add Project
-        </Link>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Link to="/operations/finished"
+            style={{ border: '1px solid #D4AF37', color: '#888888', padding: '8px 14px', fontSize: 13, fontWeight: 600 }}>
+            Finished Projects →
+          </Link>
+          <Link to="/operations/new"
+            style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>
+            + Add Project
+          </Link>
+        </div>
       </div>
       <p className="text-sm mb-4" style={{ color: '#888888' }}>
-        All ongoing projects — from production and delivery through installation, T&C, and handover.
+        Active projects only — from production through installation and T&C. Handed over projects are in Finished Projects.
       </p>
 
       {/* Search + PIC filter */}
@@ -122,7 +133,7 @@ export default function OperationsList() {
           { label: 'In Production', value: projects.filter(p => p.status === 'on_going_production').length, filter: 'on_going_production' },
           { label: 'Awaiting Shaft', value: projects.filter(p => p.status === 'awaiting_shaft_readiness').length, filter: 'awaiting_shaft_readiness' },
           { label: 'Unit Delivered', value: projects.filter(p => p.status === 'unit_delivered_awaiting_shaft').length, filter: 'unit_delivered_awaiting_shaft' },
-          { label: 'Handed Over', value: handedOverCount, filter: 'handed_over' },
+          { label: 'For Handover', value: projects.filter(p => p.status === 'for_handover').length, filter: 'for_handover' },
         ].map(s => (
           <button key={s.filter} onClick={() => setFilter(s.filter)}
             style={{

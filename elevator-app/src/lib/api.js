@@ -444,6 +444,42 @@ export async function denyDeletion(id) {
   })
 }
 
+// ─── Project Units (per-unit specs) ──────────────────────────────────────────
+export async function getProjectUnits(pipelineId) {
+  return rest(`/project_units?pipeline_id=eq.${pipelineId}&order=unit_number.asc`)
+}
+export async function createProjectUnits(units) {
+  return rest('/project_units', { method: 'POST', body: JSON.stringify(units) })
+}
+export async function updateProjectUnit(id, data) {
+  return restPatch(`/project_units?id=eq.${id}`, data)
+}
+export async function deleteProjectUnit(id) {
+  return restDelete(`/project_units?id=eq.${id}`)
+}
+
+// ─── Action Items (Needs to be Addressed) ────────────────────────────────────
+export async function getActionItems() {
+  const now = new Date().toISOString()
+  return rest(`/action_items?is_active=eq.true&or=(expires_at.gt.${encodeURIComponent(now)},expires_at.is.null)&order=created_at.desc`)
+}
+export async function createActionItem(text, createdByName) {
+  const expiresAt = new Date(Date.now() + 3 * 86400000).toISOString()
+  return restPost('/action_items', { text, created_by_name: createdByName, expires_at: expiresAt, is_active: true })
+}
+export async function checkOffActionItem(id, checkedByName) {
+  return restPatch(`/action_items?id=eq.${id}`, {
+    is_active: false,
+    checked_by_name: checkedByName,
+    checked_at: new Date().toISOString(),
+  })
+}
+
+// ─── Finished Projects ────────────────────────────────────────────────────────
+export async function getFinishedOpsProjects() {
+  return rest('/ops_projects?select=*&status=eq.handed_over&order=handed_over_date.desc')
+}
+
 // ─── Activity Log ─────────────────────────────────────────────────────────────
 export async function getProjectActivity(opsProjectId) {
   return rest(`/project_activity?ops_project_id=eq.${opsProjectId}&order=performed_at.desc&limit=50`)

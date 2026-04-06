@@ -1,8 +1,18 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { createOpsProject, getOpsProject, updateOpsProject, deleteOpsProject, requestDeletion } from '../../lib/api'
+import { createOpsProject, getOpsProject, updateOpsProject, deleteOpsProject, requestDeletion, createAmcContract } from '../../lib/api'
 import { OPS_STATUSES, statusDef } from './OperationsList'
 import { useAuth } from '../../contexts/AuthContext'
+
+const DRIVE_TYPES = [
+  { value: 'traction', label: 'Traction' },
+  { value: 'platform', label: 'Platform' },
+  { value: 'hydraulic', label: 'Hydraulic' },
+]
+const USE_TYPES = [
+  { value: 'passenger', label: 'Passenger' },
+  { value: 'service', label: 'Service' },
+]
 
 const inputStyle = {
   width: '100%', border: '1px solid #D4AF37', backgroundColor: '#FFFFFF',
@@ -13,6 +23,7 @@ const labelStyle = { display: 'block', fontSize: 13, fontWeight: 600, color: '#2
 const EMPTY = {
   project_name: '', pic: '', address: '', specs: '', unit_label: '', s_o_f: '',
   subcon: '', contact_person: '', contact_number: '',
+  brand: '', drive_type: '', use_type: '',
   status: 'awaiting_shaft_readiness', concerns: '', stall_reason: '',
   qa_pre_install: false, qa_mid: false, qa_pre_handover: false,
   qa_pre_install_date: '', qa_mid_date: '', qa_pre_handover_date: '',
@@ -67,6 +78,9 @@ export default function OperationsForm() {
           subcon: data.subcon || '',
           contact_person: data.contact_person || '',
           contact_number: data.contact_number || '',
+          brand: data.brand || '',
+          drive_type: data.drive_type || '',
+          use_type: data.use_type || '',
           status: data.status || 'awaiting_shaft_readiness',
           concerns: data.concerns || '',
           stall_reason: data.stall_reason || '',
@@ -91,17 +105,45 @@ export default function OperationsForm() {
     e.preventDefault()
     setError('')
     setSaving(true)
+
+    const isHandingOver = form.status === 'handed_over'
+    const today = new Date().toISOString().split('T')[0]
+    const oneYearLater = new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0]
+
     const payload = {
       ...form,
       qa_pre_install_date: form.qa_pre_install_date || null,
       qa_mid_date: form.qa_mid_date || null,
       qa_pre_handover_date: form.qa_pre_handover_date || null,
+      ...(isHandingOver && !form.handed_over_date ? {
+        handed_over_date: today,
+        year_completed: new Date().getFullYear(),
+        // Auto-set warranty start if not already set
+        maintenance_start_date: form.maintenance_start_date || today,
+        maintenance_end_date: form.maintenance_end_date || oneYearLater,
+      } : {}),
     }
-    const { error: err } = isEdit
+
+    const { data: saved, error: err } = isEdit
       ? await updateOpsProject(id, payload)
       : await createOpsProject(payload)
     setSaving(false)
     if (err) { setError(err.message); return }
+
+    // Auto-create maintenance contract on first handover
+    if (isHandingOver && isEdit) {
+      await createAmcContract({
+        project_name: form.project_name,
+        contract_type: 'comprehensive',
+        start_date: payload.maintenance_start_date,
+        end_date: payload.maintenance_end_date,
+        status: 'active',
+        coverage_notes: `Auto-created from Project Status handover. 1-year free maintenance. PIC: ${form.pic || '—'}`,
+        billing_frequency: 'by_call',
+        vat_inclusive: true,
+      })
+    }
+
     navigate('/operations')
   }
 
@@ -171,9 +213,9 @@ export default function OperationsForm() {
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label style={labelStyle}>Specs</label>
+              <label style={labelStyle}>Specs / Capacity</label>
               <input name="specs" value={form.specs} onChange={handleChange}
-                placeholder="e.g. 450 KG Passenger" style={inputStyle} />
+                placeholder="e.g. 450 KG" style={inputStyle} />
             </div>
             <div>
               <label style={labelStyle}>Unit Label</label>
@@ -181,9 +223,32 @@ export default function OperationsForm() {
                 placeholder="e.g. PE1, CL1" style={inputStyle} />
             </div>
             <div>
-              <label style={labelStyle}>S/O/F</label>
+              <label style={labelStyle}>Stops / Openings / Floors</label>
               <input name="s_o_f" value={form.s_o_f} onChange={handleChange}
                 placeholder="e.g. 4/4/4" style={inputStyle} />
+            </div>
+          </div>
+
+          {/* Elevator Type Details */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label style={labelStyle}>Brand</label>
+              <input name="brand" value={form.brand} onChange={handleChange}
+                placeholder="e.g. KONE, Otis, Schindler" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Drive Type</label>
+              <select name="drive_type" value={form.drive_type} onChange={handleChange} style={inputStyle}>
+                <option value="">Select…</option>
+                {DRIVE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Use Type</label>
+              <select name="use_type" value={form.use_type} onChange={handleChange} style={inputStyle}>
+                <option value="">Select…</option>
+                {USE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
             </div>
           </div>
         </div>
@@ -211,6 +276,16 @@ export default function OperationsForm() {
               <label style={labelStyle}>Stall Reason (if any)</label>
               <input name="stall_reason" value={form.stall_reason} onChange={handleChange}
                 placeholder="e.g. Awaiting permanent power supply" style={inputStyle} />
+            </div>
+          )}
+
+          {form.status === 'handed_over' && (
+            <div style={{ backgroundColor: '#2C2C2C', border: '1px solid #D4AF37', padding: 14, marginBottom: 12 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#D4AF37', marginBottom: 4 }}>Handover Notice</p>
+              <p style={{ fontSize: 12, color: '#F5F5DC' }}>
+                Saving will move this project to Finished Projects and auto-create a 1-year free maintenance contract.
+                Make sure the Warranty dates below are correct before saving.
+              </p>
             </div>
           )}
 
