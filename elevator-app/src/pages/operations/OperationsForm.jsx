@@ -17,6 +17,24 @@ const USE_TYPES = [
   { value: 'service', label: 'Service' },
 ]
 
+// Convert ALL CAPS strings to title case on save. Mixed-case strings are left alone.
+function normalizeCase(str) {
+  if (!str || typeof str !== 'string') return str
+  const s = str.trim()
+  const letters = s.replace(/[^a-zA-Z]/g, '')
+  if (letters.length === 0) return s
+  if (letters !== letters.toUpperCase()) return s // already mixed case — leave it
+  return s.replace(/\b\w+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+}
+
+function normalizeCaseFields(obj, fields) {
+  const out = { ...obj }
+  for (const f of fields) { if (out[f]) out[f] = normalizeCase(out[f]) }
+  return out
+}
+
+const TEXT_FIELDS = ['project_name', 'pic', 'subcon', 'contact_person', 'address', 'specs', 'unit_label', 'brand', 'stall_reason', 'concerns']
+
 const inputStyle = {
   width: '100%', border: '1px solid #D4AF37', backgroundColor: '#FFFFFF',
   color: '#2C2C2C', padding: '8px 12px', fontSize: 14, outline: 'none',
@@ -209,8 +227,9 @@ export default function OperationsForm() {
     const today = new Date().toISOString().split('T')[0]
     const oneYearLater = new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0]
 
+    const normalized = normalizeCaseFields(form, TEXT_FIELDS)
     const payload = {
-      ...form,
+      ...normalized,
       qa_pre_install_date: form.qa_pre_install_date || null,
       qa_mid_date: form.qa_mid_date || null,
       qa_pre_handover_date: form.qa_pre_handover_date || null,

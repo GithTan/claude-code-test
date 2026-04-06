@@ -2,6 +2,15 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createCustomer, getCustomer, updateCustomer, deleteCustomer } from '../../lib/api'
 
+function normalizeCase(str) {
+  if (!str || typeof str !== 'string') return str
+  const s = str.trim()
+  const letters = s.replace(/[^a-zA-Z]/g, '')
+  if (letters.length === 0) return s
+  if (letters !== letters.toUpperCase()) return s
+  return s.replace(/\b\w+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+}
+
 export default function CustomerForm() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -28,9 +37,13 @@ export default function CustomerForm() {
     e.preventDefault()
     setError('')
     setSaving(true)
+    const cleaned = { ...form }
+    for (const f of ['name', 'contact_person', 'address']) {
+      if (cleaned[f]) cleaned[f] = normalizeCase(cleaned[f])
+    }
     const { data, error } = isEdit
-      ? await updateCustomer(id, form)
-      : await createCustomer(form)
+      ? await updateCustomer(id, cleaned)
+      : await createCustomer(cleaned)
     setSaving(false)
     if (error) { setError(error.message); return }
     navigate(`/customers/${data.id}`)

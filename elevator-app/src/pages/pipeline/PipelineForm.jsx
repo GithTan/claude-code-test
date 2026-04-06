@@ -177,6 +177,15 @@ function UnitCard({ unit, index, onChange, onRemove, canRemove }) {
   )
 }
 
+function normalizeCase(str) {
+  if (!str || typeof str !== 'string') return str
+  const s = str.trim()
+  const letters = s.replace(/[^a-zA-Z]/g, '')
+  if (letters.length === 0) return s
+  if (letters !== letters.toUpperCase()) return s
+  return s.replace(/\b\w+/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+}
+
 export default function PipelineForm() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -213,7 +222,7 @@ export default function PipelineForm() {
 
     // Create the installation project
     const { data: project, error: projErr } = await createProject({
-      project_name: form.project_name.trim(),
+      project_name: normalizeCase(form.project_name.trim()),
       status: 'active',
       contract_amount: form.contract_amount ? parseFloat(form.contract_amount) : null,
       vat_inclusive: form.vat_inclusive,
@@ -241,12 +250,12 @@ export default function PipelineForm() {
     const unitRecords = units.map(u => ({
       pipeline_id: pipeline.id,
       unit_number: u.unit_number,
-      unit_label: u.unit_label || null,
+      unit_label: u.unit_label ? normalizeCase(u.unit_label) : null,
       is_home_elevator: u.is_home_elevator,
       with_structure: u.with_structure,
       drive_type: u.drive_type || null,
       use_type: u.use_type || null,
-      brand: u.brand || null,
+      brand: u.brand ? normalizeCase(u.brand) : null,
       stops: u.stops ? parseInt(u.stops) : null,
       openings: u.openings ? parseInt(u.openings) : null,
       floors: u.floors ? parseInt(u.floors) : null,
