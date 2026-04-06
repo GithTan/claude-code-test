@@ -76,6 +76,9 @@ export async function createCustomer(data) {
 export async function updateCustomer(id, data) {
   return restPatch(`/customers?id=eq.${id}`, data)
 }
+export async function deleteCustomer(id) {
+  return restDelete(`/customers?id=eq.${id}`)
+}
 
 // ─── Buildings ───────────────────────────────────────────────────────────────
 export async function getBuildings(customerId) {

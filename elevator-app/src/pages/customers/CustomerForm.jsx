@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createCustomer, getCustomer, updateCustomer } from '../../lib/api'
+import { createCustomer, getCustomer, updateCustomer, deleteCustomer } from '../../lib/api'
 
 export default function CustomerForm() {
   const { id } = useParams()
@@ -10,6 +10,7 @@ export default function CustomerForm() {
   const [form, setForm] = useState({ name: '', contact_person: '', phone: '', email: '', address: '' })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     if (isEdit) {
@@ -70,15 +71,37 @@ export default function CustomerForm() {
 
         {error && <p className="text-red-600 text-sm">{error}</p>}
 
-        <div className="flex gap-3 pt-2">
-          <button type="submit" disabled={saving}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50">
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-          <button type="button" onClick={() => navigate(-1)}
-            className="bg-gray-100 text-gray-700 px-4 py-2 rounded hover:bg-gray-200">
-            Cancel
-          </button>
+        <div className="flex justify-between items-center pt-2">
+          <div className="flex gap-3">
+            <button type="submit" disabled={saving}
+              style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 20px', fontWeight: 600, fontSize: 14, border: 'none', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}>
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button type="button" onClick={() => navigate(-1)}
+              style={{ backgroundColor: '#FFFFFF', color: '#2C2C2C', padding: '8px 20px', border: '1px solid #D4AF37', fontSize: 14, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+
+          {isEdit && !confirmDelete && (
+            <button type="button" onClick={() => setConfirmDelete(true)}
+              style={{ fontSize: 12, color: '#8B0000', border: '1px solid #8B0000', padding: '6px 12px', background: 'none', cursor: 'pointer' }}>
+              Delete Customer
+            </button>
+          )}
+          {isEdit && confirmDelete && (
+            <div className="flex gap-2 items-center">
+              <span style={{ fontSize: 12, color: '#8B0000' }}>Sure? This cannot be undone.</span>
+              <button type="button" onClick={async () => { await deleteCustomer(id); navigate('/customers') }}
+                style={{ fontSize: 12, backgroundColor: '#8B0000', color: '#FFFFFF', padding: '6px 12px', border: 'none', cursor: 'pointer' }}>
+                Yes, Delete
+              </button>
+              <button type="button" onClick={() => setConfirmDelete(false)}
+                style={{ fontSize: 12, color: '#888888', border: '1px solid #CCCCCC', padding: '6px 12px', background: 'none', cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       </form>
     </div>
