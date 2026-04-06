@@ -49,6 +49,11 @@ function isNew(createdAt) {
   return (Date.now() - new Date(createdAt)) < 3 * 86400000
 }
 
+function daysSince(dateStr) {
+  if (!dateStr) return 0
+  return Math.floor((Date.now() - new Date(dateStr)) / 86400000)
+}
+
 export default function OperationsList() {
   const [projects, setProjects] = useState([])
   const [filter, setFilter] = useState('all')
@@ -157,7 +162,56 @@ export default function OperationsList() {
           <Link to="/operations/new" style={{ color: '#D4AF37', fontSize: 13, fontWeight: 600 }}>Add a project →</Link>
         </div>
       ) : (
-        <div style={{ border: '1px solid #D4AF37', overflow: 'hidden' }}>
+        <>
+        {/* Mobile card list */}
+        <div className="desktop-hide mobile-card-grid">
+          {filtered.map(p => {
+            const brandNew = isNew(p.created_at)
+            const s = statusDef(p.status)
+            return (
+              <div key={p.id} style={{
+                backgroundColor: '#FFFFFF', border: '1px solid #D4AF37',
+                borderLeft: brandNew ? '4px solid #D4AF37' : '1px solid #D4AF37',
+                padding: 14,
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <Link to={`/operations/${p.id}`} style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C', textDecoration: 'none', flex: 1, marginRight: 8 }}>
+                    {p.project_name}
+                  </Link>
+                  <span style={{ backgroundColor: s.bg, color: s.color, padding: '3px 8px', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {s.label}
+                  </span>
+                </div>
+                {p.address && <p style={{ fontSize: 12, color: '#888888', marginBottom: 4 }}>{p.address}</p>}
+                <div style={{ display: 'flex', gap: 12, marginBottom: 6, fontSize: 12 }}>
+                  {p.pic && <span><span style={{ color: '#888888' }}>PIC: </span><strong>{p.pic}</strong></span>}
+                  {p.specs && <span style={{ color: '#888888' }}>{p.specs}</span>}
+                </div>
+                {p.next_action
+                  ? <p style={{ fontSize: 12, color: '#8B4500', marginBottom: 4 }}>→ {p.next_action}{p.assigned_to ? ` · ${p.assigned_to}` : ''}</p>
+                  : <p style={{ fontSize: 12, color: '#D4AF37', fontStyle: 'italic', marginBottom: 4 }}>No next action — needs owner</p>
+                }
+                {p.concerns && <p style={{ fontSize: 12, color: '#666666', marginBottom: 6 }}>{p.concerns}</p>}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: '1px solid #E8E0C8' }}>
+                  {p.last_updated_at
+                    ? <span style={{ fontSize: 11, color: '#AAAAAA' }}>Updated {daysSince(p.last_updated_at)}d ago{p.last_updated_by ? ` by ${p.last_updated_by}` : ''}</span>
+                    : <span />
+                  }
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <Link to={`/operations/${p.id}`} style={{ fontSize: 13, color: '#2C2C2C', fontWeight: 600 }}>View</Link>
+                    <Link to={`/operations/${p.id}/edit`} style={{ fontSize: 13, color: '#D4AF37', fontWeight: 600 }}>Edit →</Link>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+          <div style={{ fontSize: 12, color: '#888888', padding: '4px 0' }}>
+            {filtered.length} project{filtered.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+
+        {/* Desktop table */}
+        <div className="mobile-hide" style={{ border: '1px solid #D4AF37', overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -267,6 +321,7 @@ export default function OperationsList() {
             <span style={{ fontSize: 12, color: '#888888' }}>{filtered.length} project{filtered.length !== 1 ? 's' : ''}</span>
           </div>
         </div>
+        </>
       )}
     </div>
   )

@@ -15,6 +15,18 @@
   }
 }
 
+/* Mobile responsive utilities */
+@media (max-width: 767px) {
+  .mobile-hide { display: none !important; }
+  .mobile-card-grid { display: flex !important; flex-direction: column !important; gap: 12px !important; }
+  .mobile-stack { grid-template-columns: 1fr !important; }
+  .mobile-full { width: 100% !important; }
+  .no-print { display: block; }
+}
+@media (min-width: 768px) {
+  .desktop-hide { display: none !important; }
+}
+
 @layer utilities {
   .font-brand {
     font-family: Georgia, 'Times New Roman', serif;

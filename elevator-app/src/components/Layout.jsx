@@ -246,13 +246,13 @@ function NotificationBell({ role }) {
 
 export default function Layout({ children }) {
   const { user, role, signOut } = useAuth()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const visibleItems = navItems.filter(item => !item.adminOnly || role === 'admin')
 
-  return (
-    <div className="flex h-screen" style={{ backgroundColor: '#F5F5F5' }}>
-      {/* Sidebar */}
-      <aside className="w-56 flex flex-col" style={{ backgroundColor: '#2C2C2C' }}>
+  function SidebarContent() {
+    return (
+      <>
         {/* Brand + Bell */}
         <div className="p-5" style={{ borderBottom: '1px solid #3D3D3D', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
@@ -263,11 +263,18 @@ export default function Layout({ children }) {
               {role?.replaceAll('_', ' ')}
             </p>
           </div>
-          <NotificationBell role={role} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <NotificationBell role={role} />
+            {/* Close button on mobile */}
+            <button className="desktop-hide" onClick={() => setSidebarOpen(false)}
+              style={{ background: 'none', border: 'none', color: '#888888', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: 0 }}>
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-3 space-y-0.5">
+        <nav className="flex-1 p-3 space-y-0.5" onClick={() => setSidebarOpen(false)}>
           {visibleItems.map(item => (
             <NavLink
               key={item.to}
@@ -290,7 +297,6 @@ export default function Layout({ children }) {
         {/* Footer */}
         <div className="p-4" style={{ borderTop: '1px solid #3D3D3D' }}>
           <p className="text-xs truncate mb-3" style={{ color: '#888888' }}>{user?.email}</p>
-
           <div className="flex items-center justify-end gap-2 mb-2">
             <div style={{
               width: 18, height: 18, border: '1.5px solid #D4AF37',
@@ -302,7 +308,6 @@ export default function Layout({ children }) {
               RC 77558
             </span>
           </div>
-
           <div className="flex justify-end">
             <button onClick={signOut} className="text-xs transition-colors" style={{ color: '#888888' }}
               onMouseEnter={e => e.target.style.color = '#D4AF37'}
@@ -311,12 +316,50 @@ export default function Layout({ children }) {
             </button>
           </div>
         </div>
+      </>
+    )
+  }
+
+  return (
+    <div className="flex h-screen" style={{ backgroundColor: '#F5F5F5' }}>
+      {/* Desktop sidebar */}
+      <aside className="w-56 flex flex-col mobile-hide" style={{ backgroundColor: '#2C2C2C' }}>
+        <SidebarContent />
       </aside>
 
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && (
+        <div className="desktop-hide" style={{ position: 'fixed', inset: 0, zIndex: 200 }}>
+          {/* Backdrop */}
+          <div onClick={() => setSidebarOpen(false)}
+            style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)' }} />
+          {/* Drawer */}
+          <aside style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 224, backgroundColor: '#2C2C2C', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
+            <SidebarContent />
+          </aside>
+        </div>
+      )}
+
       {/* Main content */}
-      <main className="flex-1 overflow-auto p-6" style={{ backgroundColor: '#F5F5F5' }}>
-        {children}
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile top bar */}
+        <div className="desktop-hide" style={{ backgroundColor: '#2C2C2C', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          <button onClick={() => setSidebarOpen(true)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ display: 'block', width: 20, height: 2, backgroundColor: '#D4AF37' }} />
+            <span style={{ display: 'block', width: 20, height: 2, backgroundColor: '#D4AF37' }} />
+            <span style={{ display: 'block', width: 20, height: 2, backgroundColor: '#D4AF37' }} />
+          </button>
+          <span className="font-brand" style={{ color: '#D4AF37', fontWeight: 700, fontSize: 16, letterSpacing: '0.02em' }}>FIEC Elevator</span>
+          <div style={{ marginLeft: 'auto' }}>
+            <NotificationBell role={role} />
+          </div>
+        </div>
+
+        <main className="flex-1 overflow-auto p-6" style={{ backgroundColor: '#F5F5F5' }}>
+          {children}
+        </main>
+      </div>
     </div>
   )
 }

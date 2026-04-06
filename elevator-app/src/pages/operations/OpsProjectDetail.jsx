@@ -172,7 +172,7 @@ export default function OpsProjectDetail() {
     <div style={{ maxWidth: 860 }}>
       {/* Header */}
       <Link to="/operations" style={{ fontSize: 13, color: '#D4AF37', fontWeight: 600 }}>← Project Status</Link>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', margin: '12px 0 20px' }}>
+      <div className="mobile-stack" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', margin: '12px 0 20px', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#2C2C2C', marginBottom: 6 }}>{project.project_name}</h1>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -222,7 +222,7 @@ export default function OpsProjectDetail() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+      <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {/* LEFT COLUMN */}
         <div>
 
