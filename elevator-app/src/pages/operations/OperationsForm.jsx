@@ -328,12 +328,14 @@ export default function OperationsForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label style={labelStyle}>Date started</label>
-              <input type="date" name="project_start_date" value={form.project_start_date} onChange={handleChange} style={inputStyle} />
+              <label style={labelStyle}>Installation start date *</label>
+              <input type="date" name="project_start_date" value={form.project_start_date} onChange={handleChange}
+                style={inputStyle} required />
             </div>
             <div>
-              <label style={labelStyle}>Date ended</label>
-              <input type="date" name="project_end_date" value={form.project_end_date} onChange={handleChange} style={inputStyle} />
+              <label style={labelStyle}>Target end date *</label>
+              <input type="date" name="project_end_date" value={form.project_end_date} onChange={handleChange}
+                style={inputStyle} required />
               {form.project_start_date && form.project_end_date && (() => {
                 const days = Math.ceil((new Date(form.project_end_date) - new Date(form.project_start_date)) / 86400000)
                 return <p style={{ fontSize: 11, color: '#888888', marginTop: 4 }}>{days > 0 ? `${days} days` : 'Check dates'}</p>
