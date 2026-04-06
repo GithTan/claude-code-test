@@ -187,10 +187,18 @@ export default function OpsProjectDetail() {
             )}
           </div>
         </div>
-        <Link to={`/operations/${id}/edit`}
-          style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 16px', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-          Edit Project
-        </Link>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {(project.status === 'for_handover' || project.status === 'handed_over') && (
+            <Link to={`/operations/${id}/handover`}
+              style={{ border: '1px solid #D4AF37', color: '#D4AF37', padding: '8px 14px', fontSize: 13, fontWeight: 600, textDecoration: 'none', backgroundColor: '#FFFFFF' }}>
+              Print Handover →
+            </Link>
+          )}
+          <Link to={`/operations/${id}/edit`}
+            style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 16px', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+            Edit Project
+          </Link>
+        </div>
       </div>
 
       {/* No owner warning */}
