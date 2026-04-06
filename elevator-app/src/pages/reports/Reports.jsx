@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import {
   getElevatorStatusOverview, getJobsThisMonth, getMonthlyRevenue,
   getOverdueMaintenance, getPaymentHistory, getTechnicianSummary, getUnpaidInvoices,
+  getBreakdownPatterns,
 } from '../../lib/api'
 
 function fmt(amount) {
@@ -64,11 +65,13 @@ export default function Reports() {
   const [unpaidInvoices, setUnpaidInvoices] = useState([])
   const [paymentHistory, setPaymentHistory] = useState([])
   const [monthlyRevenue, setMonthlyRevenue] = useState([])
+  const [breakdownPatterns, setBreakdownPatterns] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const fetches = [
       getOverdueMaintenance().then(({ data }) => setOverdue(data || [])),
+      getBreakdownPatterns().then(({ data }) => setBreakdownPatterns(data || [])),
       getJobsThisMonth().then(({ data }) => setJobsMonth(data || [])),
       getTechnicianSummary().then(({ data }) => setTechSummary(data || [])),
       getElevatorStatusOverview().then(({ data }) => setElevatorStatus(data || [])),
@@ -101,6 +104,31 @@ export default function Reports() {
 
   const statusMap = {}
   elevatorStatus.forEach(e => { statusMap[e.status] = (statusMap[e.status] || 0) + 1 })
+
+  // Breakdown patterns: group by elevator, sort by count desc
+  const bdMap = {}
+  breakdownPatterns.forEach(b => {
+    const elevId = b.elevators?.id
+    if (!elevId) return
+    if (!bdMap[elevId]) {
+      bdMap[elevId] = {
+        elevator: b.elevators?.unit_number,
+        building: b.elevators?.buildings?.name,
+        customer: b.elevators?.buildings?.customers?.name,
+        count: 0,
+        lastDate: null,
+        lastDesc: null,
+        openCount: 0,
+      }
+    }
+    bdMap[elevId].count++
+    if (!bdMap[elevId].lastDate || b.reported_date > bdMap[elevId].lastDate) {
+      bdMap[elevId].lastDate = b.reported_date
+      bdMap[elevId].lastDesc = b.description
+    }
+    if (b.status === 'open' || b.status === 'in_progress') bdMap[elevId].openCount++
+  })
+  const bdRows = Object.values(bdMap).sort((a, b) => b.count - a.count)
 
   return (
     <div>
@@ -186,6 +214,55 @@ export default function Reports() {
               </div>
             ))}
           </div>
+        )}
+      </Section>
+
+      <Section title="Breakdown Patterns — Repeat Offenders">
+        {bdRows.length === 0 ? <EmptyState /> : (
+          <>
+            <p style={{ fontSize: 12, color: '#888888', marginBottom: 12 }}>
+              Elevators ranked by total breakdown reports. Units with 3+ breakdowns may need scheduled part replacement.
+            </p>
+            <div style={{ border: '1px solid #D4AF37', overflow: 'hidden' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Building</th>
+                    <th style={thStyle}>Customer</th>
+                    <th style={thStyle}>Elevator</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Total Reports</th>
+                    <th style={{ ...thStyle, textAlign: 'right' }}>Open Now</th>
+                    <th style={thStyle}>Last Report</th>
+                    <th style={thStyle}>Last Issue</th>
+                  </tr>
+                </thead>
+                <tbody style={{ backgroundColor: '#FFFFFF' }}>
+                  {bdRows.map((r, i) => (
+                    <tr key={i} style={{ backgroundColor: r.count >= 3 ? '#FFF8E8' : '#FFFFFF' }}>
+                      <td style={{ ...tdStyle, fontWeight: 600 }}>{r.building || '—'}</td>
+                      <td style={tdStyle}>{r.customer || '—'}</td>
+                      <td style={{ ...tdStyle, fontWeight: 600 }}>{r.elevator || '—'}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>
+                        <span style={{
+                          fontWeight: 700,
+                          color: r.count >= 5 ? '#8B0000' : r.count >= 3 ? '#8B4500' : '#2C2C2C',
+                          backgroundColor: r.count >= 5 ? '#FFE8E8' : r.count >= 3 ? '#FFF0D8' : 'transparent',
+                          padding: r.count >= 3 ? '2px 8px' : undefined,
+                        }}>
+                          {r.count}
+                        </span>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'right', color: r.openCount > 0 ? '#8B0000' : '#888888', fontWeight: r.openCount > 0 ? 700 : 400 }}>
+                        {r.openCount || '—'}
+                      </td>
+                      <td style={{ ...tdStyle, color: '#888888' }}>{r.lastDate || '—'}</td>
+                      <td style={{ ...tdStyle, fontSize: 12, color: '#666666', maxWidth: 200 }}>{r.lastDesc || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Section>
 
