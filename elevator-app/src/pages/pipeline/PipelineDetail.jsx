@@ -12,6 +12,12 @@ const STEP_LABELS = Object.fromEntries(PIPELINE_STEPS.map(s => [s.number, s.labe
 const STEP_GATES = Object.fromEntries(PIPELINE_STEPS.map(s => [s.number, s.gate]))
 const STEP_ROLES = Object.fromEntries(PIPELINE_STEPS.map(s => [s.number, s.role]))
 
+// Required document label per step — null means generic "file required"
+const STEP_DOCUMENT_LABEL = {
+  3: 'Client Signature',
+  4: 'Engineer Confirmation to Supplier',
+}
+
 function canCompleteStep(stepNumber, userRole) {
   if (userRole === 'admin') return true
   return STEP_ROLES[stepNumber] === userRole
@@ -23,20 +29,13 @@ function daysSince(dateStr) {
 }
 
 function StatusBadge({ status, unlockedAt }) {
-  if (status === 'completed') {
-    return <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-900">Completed</span>
-  }
-  if (status === 'locked') {
-    return <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">Locked</span>
-  }
+  const base = { padding: '3px 10px', fontSize: 11, fontWeight: 700 }
+  if (status === 'completed') return <span style={{ ...base, backgroundColor: '#D4AF37', color: '#2C2C2C' }}>Completed</span>
+  if (status === 'locked')    return <span style={{ ...base, backgroundColor: '#E8E0C8', color: '#888888' }}>Locked</span>
   const days = daysSince(unlockedAt)
-  if (days >= 7) {
-    return <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Overdue ({days}d)</span>
-  }
-  if (days >= 3) {
-    return <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Waiting ({days}d)</span>
-  }
-  return <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">In Progress</span>
+  if (days >= 7) return <span style={{ ...base, backgroundColor: '#8B0000', color: '#FFFFFF' }}>Overdue ({days}d)</span>
+  if (days >= 3) return <span style={{ ...base, backgroundColor: '#8B4500', color: '#F5F5DC' }}>Waiting ({days}d)</span>
+  return <span style={{ ...base, backgroundColor: '#2C2C2C', color: '#D4AF37' }}>In Progress</span>
 }
 
 async function openFile(attachment) {
@@ -83,18 +82,18 @@ function UploadRevisionForm({ step, pipelineId, onDone, onCancel }) {
   }
 
   return (
-    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
-      <p className="text-xs font-semibold text-yellow-800 mb-2">Upload Drawing Revision</p>
-      <p className="text-xs text-yellow-700 mb-3">Uploading a new revision will reset the process back to Step 2 and lock steps 3 onwards.</p>
-      <input type="file" onChange={e => setFile(e.target.files[0])} className="text-sm mb-2 w-full" />
-      {error && <p className="text-red-600 text-xs mb-2">{error}</p>}
-      <div className="flex gap-2">
+    <div style={{ marginTop: 12, padding: 16, backgroundColor: '#FFF8E8', border: '1px solid #D4AF37' }}>
+      <p style={{ fontSize: 13, fontWeight: 700, color: '#2C2C2C', marginBottom: 4 }}>Upload drawing revision</p>
+      <p style={{ fontSize: 12, color: '#8B4500', marginBottom: 12 }}>Uploading a revision will reset the process back to Step 2 and lock steps 3 onwards.</p>
+      <input type="file" onChange={e => setFile(e.target.files[0])} style={{ fontSize: 13, marginBottom: 8, width: '100%' }} />
+      {error && <p style={{ color: '#8B0000', fontSize: 12, marginBottom: 8 }}>{error}</p>}
+      <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={handleUpload} disabled={saving || !file}
-          className="bg-yellow-600 text-white px-3 py-1 rounded text-xs hover:bg-yellow-700 disabled:opacity-50">
+          style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '6px 14px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', opacity: (!file || saving) ? 0.5 : 1 }}>
           {saving ? 'Uploading…' : 'Upload & Reset to Step 2'}
         </button>
         <button onClick={onCancel}
-          className="text-gray-500 px-3 py-1 rounded text-xs border border-gray-300 hover:bg-gray-50">
+          style={{ background: 'none', border: '1px solid #CCCCCC', color: '#888888', padding: '6px 14px', fontSize: 12, cursor: 'pointer' }}>
           Cancel
         </button>
       </div>
@@ -102,8 +101,12 @@ function UploadRevisionForm({ step, pipelineId, onDone, onCancel }) {
   )
 }
 
+const inputStyle = { width: '100%', border: '1px solid #D4AF37', backgroundColor: '#FFFFFF', color: '#2C2C2C', padding: '7px 10px', fontSize: 13, outline: 'none' }
+const labelStyle = { fontSize: 12, fontWeight: 600, color: '#2C2C2C', marginBottom: 4, display: 'block' }
+
 function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
   const gate = STEP_GATES[step.step_number]
+  const docLabel = STEP_DOCUMENT_LABEL[step.step_number]
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState(null)
   const [productionEndDate, setProductionEndDate] = useState('')
@@ -117,7 +120,8 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
     setError(null)
 
     if (gate === 'file_required' && !file && step.pipeline_attachments?.length === 0) {
-      setError('A file attachment is required to complete this step.')
+      const doc = STEP_DOCUMENT_LABEL[step.step_number]
+      setError(doc ? `You must upload the ${doc} before this step can be completed.` : 'A file attachment is required to complete this step.')
       setSaving(false)
       return
     }
@@ -177,77 +181,79 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
   const proj = pipeline.installation_projects
 
   return (
-    <div className="mt-3 p-4 bg-gray-50 rounded border border-gray-200">
-      {/* Step 1: show project summary, no re-entry needed */}
+    <div style={{ marginTop: 12, padding: 16, backgroundColor: '#F5F5DC', border: '1px solid #D4AF37' }}>
+
       {gate === 'confirm_with_data' && (
-        <div className="mb-4 p-3 bg-white border border-gray-200 rounded text-sm space-y-1">
-          <p className="font-medium text-gray-800">{proj?.project_name}</p>
-          <p className="text-gray-500 capitalize">
-            {[
-              pipeline.elevator_type?.replace(/_/g, ' '),
-              pipeline.home_elevator_type,
+        <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#FFFFFF', border: '1px solid #E8E0C8' }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: '#2C2C2C', marginBottom: 4 }}>{proj?.project_name}</p>
+          <p style={{ fontSize: 13, color: '#888888', textTransform: 'capitalize' }}>
+            {[pipeline.elevator_type?.replace(/_/g, ' '), pipeline.home_elevator_type,
               pipeline.with_structure === true ? 'with structure' : pipeline.with_structure === false ? 'no structure' : null,
               pipeline.unit_count > 1 ? `${pipeline.unit_count} units` : '1 unit',
             ].filter(Boolean).join(' · ')}
           </p>
           {role === 'admin' && proj?.contract_amount && (
-            <p className="text-gray-600">
+            <p style={{ fontSize: 13, color: '#2C2C2C', marginTop: 4 }}>
               ₱{Number(proj.contract_amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-              <span className="ml-2 text-xs text-gray-400">{proj.vat_inclusive ? 'VAT Inclusive' : 'Non-VAT'}</span>
+              <span style={{ fontSize: 11, color: '#888888', marginLeft: 8 }}>{proj.vat_inclusive ? 'VAT Inclusive' : 'Non-VAT'}</span>
             </p>
           )}
         </div>
       )}
 
       {gate === 'date_entry' && (
-        <div className="mb-3">
-          <label className="text-xs font-medium text-gray-600">Expected Production Completion Date</label>
-          <input type="date" value={productionEndDate} onChange={e => setProductionEndDate(e.target.value)}
-            className="w-full mt-1 border border-gray-300 rounded px-2 py-1 text-sm" />
+        <div style={{ marginBottom: 12 }}>
+          <label style={labelStyle}>Expected production completion date</label>
+          <input type="date" value={productionEndDate} onChange={e => setProductionEndDate(e.target.value)} style={inputStyle} />
         </div>
       )}
 
       {gate === 'tracking_entry' && (
-        <div className="space-y-3 mb-3">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
           <div>
-            <label className="text-xs font-medium text-gray-600">Tracking Number</label>
-            <input value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)}
-              className="w-full mt-1 border border-gray-300 rounded px-2 py-1 text-sm" />
+            <label style={labelStyle}>Tracking number</label>
+            <input value={trackingNumber} onChange={e => setTrackingNumber(e.target.value)} style={inputStyle} />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-600">Shipping Date</label>
-            <input type="date" value={shippingDate} onChange={e => setShippingDate(e.target.value)}
-              className="w-full mt-1 border border-gray-300 rounded px-2 py-1 text-sm" />
+            <label style={labelStyle}>Shipping date</label>
+            <input type="date" value={shippingDate} onChange={e => setShippingDate(e.target.value)} style={inputStyle} />
           </div>
         </div>
       )}
 
       {(gate === 'file_required' || gate === 'confirm_optional_file') && (
-        <div className="mb-3">
-          <label className="text-xs font-medium text-gray-600">
-            {gate === 'file_required' ? 'Attach File (required)' : 'Attach File (optional)'}
+        <div style={{ marginBottom: 12 }}>
+          {docLabel ? (
+            <div style={{ backgroundColor: '#2C2C2C', padding: '10px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Required document</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF' }}>{docLabel}</span>
+              <span style={{ fontSize: 11, color: '#888888', marginLeft: 'auto' }}>Step cannot be completed without this file</span>
+            </div>
+          ) : null}
+          <label style={labelStyle}>
+            {gate === 'file_required'
+              ? (docLabel ? `Upload: ${docLabel}` : 'Attach file (required)')
+              : 'Attach file (optional)'}
           </label>
-          <input type="file" onChange={e => setFile(e.target.files[0])}
-            className="w-full mt-1 text-sm" />
+          <input type="file" onChange={e => setFile(e.target.files[0])} style={{ fontSize: 13, width: '100%', marginBottom: 8 }} />
           <FileList attachments={step.pipeline_attachments} />
         </div>
       )}
 
-      <div className="mb-3">
-        <label className="text-xs font-medium text-gray-600">Notes (optional)</label>
-        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-          className="w-full mt-1 border border-gray-300 rounded px-2 py-1 text-sm" />
+      <div style={{ marginBottom: 12 }}>
+        <label style={labelStyle}>Notes (optional)</label>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} style={inputStyle} />
       </div>
 
-      {error && <p className="text-red-600 text-xs mb-3">{error}</p>}
+      {error && <p style={{ color: '#8B0000', fontSize: 12, marginBottom: 10 }}>{error}</p>}
 
-      <div className="flex gap-2">
+      <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={handleComplete} disabled={saving}
-          style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '6px 16px', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
-          {saving ? 'Saving…' : 'Mark Complete'}
+          style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 20px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', opacity: saving ? 0.5 : 1 }}>
+          {saving ? 'Saving…' : 'Mark complete'}
         </button>
         <button onClick={onCancel}
-          className="text-gray-500 px-4 py-1.5 rounded text-sm border border-gray-300 hover:bg-gray-50">
+          style={{ background: 'none', border: '1px solid #CCCCCC', color: '#888888', padding: '8px 14px', fontSize: 13, cursor: 'pointer' }}>
           Cancel
         </button>
       </div>
