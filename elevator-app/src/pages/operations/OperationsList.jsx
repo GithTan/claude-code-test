@@ -197,6 +197,11 @@ export default function OperationsList() {
                         )}
                       </div>
                       {p.address && <p style={{ fontSize: 11, color: '#888888', fontWeight: 400, marginTop: 2 }}>{p.address}</p>}
+                      {(p.project_start_date || p.project_end_date) && (
+                        <p style={{ fontSize: 11, color: '#888888', fontWeight: 400, marginTop: 2 }}>
+                          {p.project_start_date || '—'} → {p.project_end_date || 'ongoing'}
+                        </p>
+                      )}
                       {p.next_action && (
                         <p style={{ fontSize: 11, color: '#8B4500', marginTop: 3 }}>→ {p.next_action}</p>
                       )}

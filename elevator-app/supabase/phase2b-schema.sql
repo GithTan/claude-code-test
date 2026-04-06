@@ -10,3 +10,7 @@ ALTER TABLE project_units ALTER COLUMN pipeline_id DROP NOT NULL;
 ALTER TABLE project_units DROP CONSTRAINT IF EXISTS unique_pipeline_unit;
 CREATE UNIQUE INDEX IF NOT EXISTS unique_pipeline_unit ON project_units (pipeline_id, unit_number) WHERE pipeline_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS unique_ops_project_unit ON project_units (ops_project_id, unit_number) WHERE ops_project_id IS NOT NULL;
+
+-- Project date tracking
+ALTER TABLE ops_projects ADD COLUMN IF NOT EXISTS project_start_date DATE;
+ALTER TABLE ops_projects ADD COLUMN IF NOT EXISTS project_end_date DATE;

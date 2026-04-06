@@ -28,6 +28,7 @@ const EMPTY = {
   project_name: '', pic: '', address: '', specs: '', unit_label: '', s_o_f: '',
   subcon: '', contact_person: '', contact_number: '',
   brand: '', drive_type: '', use_type: '',
+  project_start_date: '', project_end_date: '',
   status: 'awaiting_shaft_readiness', concerns: '', stall_reason: '',
   qa_pre_install: false, qa_mid: false, qa_pre_handover: false,
   qa_pre_install_date: '', qa_mid_date: '', qa_pre_handover_date: '',
@@ -146,6 +147,8 @@ export default function OperationsForm() {
             brand: d.brand || '',
             drive_type: d.drive_type || '',
             use_type: d.use_type || '',
+            project_start_date: d.project_start_date || '',
+            project_end_date: d.project_end_date || '',
             status: d.status || 'awaiting_shaft_readiness',
             concerns: d.concerns || '',
             stall_reason: d.stall_reason || '',
@@ -321,6 +324,21 @@ export default function OperationsForm() {
             <label style={labelStyle}>Address</label>
             <input name="address" value={form.address} onChange={handleChange}
               placeholder="e.g. Quezon Ave., Sta Cruz, Laguna" style={inputStyle} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label style={labelStyle}>Date started</label>
+              <input type="date" name="project_start_date" value={form.project_start_date} onChange={handleChange} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Date ended</label>
+              <input type="date" name="project_end_date" value={form.project_end_date} onChange={handleChange} style={inputStyle} />
+              {form.project_start_date && form.project_end_date && (() => {
+                const days = Math.ceil((new Date(form.project_end_date) - new Date(form.project_start_date)) / 86400000)
+                return <p style={{ fontSize: 11, color: '#888888', marginTop: 4 }}>{days > 0 ? `${days} days` : 'Check dates'}</p>
+              })()}
+            </div>
           </div>
         </div>
 
