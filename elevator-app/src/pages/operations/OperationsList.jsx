@@ -204,7 +204,7 @@ export default function OperationsList() {
                       )}
                       {p.next_action
                         ? <p style={{ fontSize: 11, color: '#8B4500', marginTop: 3 }}>→ {p.next_action}{p.assigned_to ? ` · ${p.assigned_to}` : ''}</p>
-                        : <p style={{ fontSize: 11, color: '#CC8800', marginTop: 3, fontStyle: 'italic' }}>No next action — needs owner</p>
+                        : <p style={{ fontSize: 11, color: '#D4AF37', marginTop: 3, fontStyle: 'italic' }}>No next action — needs owner</p>
                       }
                     </td>
                     <td style={{ ...tdStyle, fontWeight: 600 }}>{p.pic || '—'}</td>
