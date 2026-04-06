@@ -206,12 +206,35 @@ export default function OperationsList() {
                         ? <p style={{ fontSize: 11, color: '#8B4500', marginTop: 3 }}>→ {p.next_action}{p.assigned_to ? ` · ${p.assigned_to}` : ''}</p>
                         : <p style={{ fontSize: 11, color: '#D4AF37', marginTop: 3, fontStyle: 'italic' }}>No next action — needs owner</p>
                       }
+                      {p.last_updated_at && (
+                        <p style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>
+                          Updated {daysSince(p.last_updated_at)}d ago{p.last_updated_by ? ` by ${p.last_updated_by}` : ''}
+                        </p>
+                      )}
+                      {p.pipeline_id && (
+                        <Link to={`/pipeline/${p.pipeline_id}`} style={{ fontSize: 10, color: '#D4AF37', marginTop: 2, display: 'block' }}>
+                          View pipeline →
+                        </Link>
+                      )}
                     </td>
                     <td style={{ ...tdStyle, fontWeight: 600 }}>{p.pic || '—'}</td>
                     <td style={tdStyle}>
-                      {p.specs && <p style={{ fontWeight: 500 }}>{p.specs}</p>}
-                      {p.unit_label && <p style={{ fontSize: 11, color: '#888888' }}>{p.unit_label}</p>}
-                      {p.s_o_f && <p style={{ fontSize: 11, color: '#888888' }}>S/O/F: {p.s_o_f}</p>}
+                      {/* Unit 1 (main record) */}
+                      <div style={{ marginBottom: p.project_units?.length > 0 ? 6 : 0 }}>
+                        {p.specs && <p style={{ fontWeight: 500 }}>{p.specs}</p>}
+                        {p.unit_label && <p style={{ fontSize: 11, color: '#888888' }}>{p.unit_label}{p.brand ? ` · ${p.brand}` : ''}</p>}
+                        {p.s_o_f && <p style={{ fontSize: 11, color: '#888888' }}>S/O/F: {p.s_o_f}</p>}
+                      </div>
+                      {/* Extra units */}
+                      {(p.project_units || []).map(u => (
+                        <div key={u.unit_number} style={{ borderTop: '1px solid #E8E0C8', paddingTop: 4, marginTop: 4 }}>
+                          <p style={{ fontSize: 11, fontWeight: 600, color: '#2C2C2C' }}>Unit {u.unit_number}{u.unit_label ? ` — ${u.unit_label}` : ''}</p>
+                          {u.specs && <p style={{ fontSize: 11, color: '#888888' }}>{u.specs}{u.brand ? ` · ${u.brand}` : ''}</p>}
+                          {(u.stops || u.openings || u.floors) && (
+                            <p style={{ fontSize: 11, color: '#888888' }}>S/O/F: {u.stops || '?'}/{u.openings || '?'}/{u.floors || '?'}</p>
+                          )}
+                        </div>
+                      ))}
                     </td>
                     <td style={tdStyle}>{p.subcon || <span style={{ color: '#CCCCCC' }}>—</span>}</td>
                     <td style={{ ...tdStyle, minWidth: 90 }}>

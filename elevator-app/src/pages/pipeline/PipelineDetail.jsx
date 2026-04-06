@@ -170,6 +170,7 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
         status: 'on_going_production',
         production_start_date: today,
         specs: specParts || null,
+        pipeline_id: pipeline.id,
         concerns: 'Auto-added from Pipeline after supplier payment.',
       })
     }

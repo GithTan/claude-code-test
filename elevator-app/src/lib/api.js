@@ -252,6 +252,10 @@ export async function updateBreakdown(id, data) {
 export async function getOpenBreakdowns() {
   return rest('/breakdowns?select=*,elevators(unit_number,buildings(name,customers(name)))&status=in.(open,in_progress)&order=priority.asc')
 }
+export async function getBreakdownPatterns() {
+  // Returns all breakdowns with elevator+building+customer for pattern analysis
+  return rest('/breakdowns?select=id,reported_date,priority,status,description,elevators(id,unit_number,buildings(id,name,customers(name)))&order=reported_date.desc')
+}
 
 // ─── Pipeline Tracker ───────────────────────────────────────────────────────
 
@@ -386,7 +390,7 @@ export async function resetPipelineToStep(pipelineId, stepNumber) {
 
 // ─── Operations Projects ──────────────────────────────────────────────────────
 export async function getOpsProjects() {
-  return rest('/ops_projects?select=*&order=created_at.desc')
+  return rest('/ops_projects?select=*,project_units(unit_number,unit_label,specs,brand,drive_type,use_type,stops,openings,floors)&order=created_at.desc')
 }
 export async function getOpsProject(id) {
   return restOne(`/ops_projects?select=*&id=eq.${id}`)

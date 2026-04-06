@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams, useNavigate } from 'react-router-dom'
+import { Link, useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   getOpsProject, updateOpsProject,
   getProjectActivity, logProjectActivity,
@@ -113,6 +113,7 @@ export default function OpsProjectDetail() {
       next_action_date: nextActionDate || null,
       assigned_to: assignedTo,
       last_updated_at: new Date().toISOString(),
+      last_updated_by: author,
     })
     await logProjectActivity(id, 'next_action_updated', `Next action: ${nextAction}${assignedTo ? ` (assigned to ${assignedTo})` : ''}`, author)
     setEditingNextAction(false)
@@ -125,6 +126,7 @@ export default function OpsProjectDetail() {
       status: newStatus,
       health: newHealth,
       last_updated_at: new Date().toISOString(),
+      last_updated_by: author,
     })
     await logProjectActivity(id, 'status_updated', `Status changed from ${prev} to ${newStatus} · Health: ${newHealth}`, author)
     setEditingStatus(false)
@@ -178,6 +180,11 @@ export default function OpsProjectDetail() {
             <span style={{ backgroundColor: health.bg, color: health.color, padding: '3px 10px', fontSize: 11, fontWeight: 700 }}>{health.label}</span>
             {project.pic && <span style={{ fontSize: 12, color: '#888888' }}>PIC: <strong>{project.pic}</strong></span>}
             {project.assigned_to && <span style={{ fontSize: 12, color: '#888888' }}>Assigned: <strong>{project.assigned_to}</strong></span>}
+            {project.pipeline_id && (
+              <Link to={`/pipeline/${project.pipeline_id}`} style={{ fontSize: 12, color: '#D4AF37', fontWeight: 600 }}>
+                View pipeline →
+              </Link>
+            )}
           </div>
         </div>
         <Link to={`/operations/${id}/edit`}
