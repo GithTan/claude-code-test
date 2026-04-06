@@ -122,6 +122,11 @@ export default function OperationsForm() {
   const { role, user } = useAuth()
   const isEdit = Boolean(id)
 
+  // Statuses where installation dates become required
+  const MECH_INSTALL_AND_BEYOND = [
+    'mechanical_installation', 'for_tnc', 'done_tnc', 'awaiting_power', 'for_handover', 'handed_over',
+  ]
+
   const [form, setForm] = useState(EMPTY)
   const [extraUnits, setExtraUnits] = useState([])
   const [error, setError] = useState('')
@@ -326,22 +331,34 @@ export default function OperationsForm() {
               placeholder="e.g. Quezon Ave., Sta Cruz, Laguna" style={inputStyle} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label style={labelStyle}>Installation start date *</label>
-              <input type="date" name="project_start_date" value={form.project_start_date} onChange={handleChange}
-                style={inputStyle} required />
-            </div>
-            <div>
-              <label style={labelStyle}>Target end date *</label>
-              <input type="date" name="project_end_date" value={form.project_end_date} onChange={handleChange}
-                style={inputStyle} required />
-              {form.project_start_date && form.project_end_date && (() => {
-                const days = Math.ceil((new Date(form.project_end_date) - new Date(form.project_start_date)) / 86400000)
-                return <p style={{ fontSize: 11, color: '#888888', marginTop: 4 }}>{days > 0 ? `${days} days` : 'Check dates'}</p>
-              })()}
-            </div>
-          </div>
+          {(() => {
+            const datesRequired = MECH_INSTALL_AND_BEYOND.includes(form.status)
+            return (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle}>
+                    Installation start date {datesRequired ? '*' : ''}
+                  </label>
+                  <input type="date" name="project_start_date" value={form.project_start_date} onChange={handleChange}
+                    style={inputStyle} required={datesRequired} />
+                  {!datesRequired && (
+                    <p style={{ fontSize: 11, color: '#AAAAAA', marginTop: 3 }}>Required at Mechanical Installation</p>
+                  )}
+                </div>
+                <div>
+                  <label style={labelStyle}>
+                    Target end date {datesRequired ? '*' : ''}
+                  </label>
+                  <input type="date" name="project_end_date" value={form.project_end_date} onChange={handleChange}
+                    style={inputStyle} required={datesRequired} />
+                  {form.project_start_date && form.project_end_date && (() => {
+                    const days = Math.ceil((new Date(form.project_end_date) - new Date(form.project_start_date)) / 86400000)
+                    return <p style={{ fontSize: 11, color: '#888888', marginTop: 3 }}>{days > 0 ? `${days} days` : 'Check dates'}</p>
+                  })()}
+                </div>
+              </div>
+            )
+          })()}
         </div>
 
         {/* Unit specs — Unit 1 (main fields) */}

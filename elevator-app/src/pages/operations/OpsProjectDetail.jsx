@@ -291,8 +291,8 @@ export default function OpsProjectDetail() {
         {/* RIGHT COLUMN */}
         <div>
 
-          {/* Billing Milestones */}
-          <div style={sectionStyle}>
+          {/* Billing Milestones — admin only */}
+          {role === 'admin' && <div style={sectionStyle}>
             <p style={sectionTitle}>Billing Milestones</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {BILLING_TYPES.map(bt => {
@@ -358,7 +358,7 @@ export default function OpsProjectDetail() {
                 )
               })}
             </div>
-          </div>
+          </div>}
 
           {/* Comments */}
           <div style={sectionStyle}>
