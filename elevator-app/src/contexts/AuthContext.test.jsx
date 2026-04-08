@@ -10,14 +10,13 @@ vi.mock('../lib/supabase', () => ({
         data: { subscription: { unsubscribe: vi.fn() } }
       }),
     },
-    from: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: null, error: null })
-        })
-      })
-    }),
   }
+}))
+
+vi.mock('../lib/api', () => ({
+  _setAuthToken: vi.fn(),
+  _setViewerRole: vi.fn(),
+  getProfile: vi.fn().mockResolvedValue({ data: null, error: null }),
 }))
 
 function TestComponent() {
@@ -36,6 +35,29 @@ describe('AuthContext', () => {
     render(<AuthProvider><TestComponent /></AuthProvider>)
     await waitFor(() => {
       expect(screen.getByTestId('user')).toHaveTextContent('logged-out')
+    })
+  })
+
+  it('allows anonymous trial users in as operations_manager', async () => {
+    const { supabase } = await import('../lib/supabase')
+    supabase.auth.getSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          access_token: 'trial-token',
+          user: {
+            id: 'trial-user',
+            is_anonymous: true,
+            app_metadata: { provider: 'anonymous' },
+            identities: [{ provider: 'anonymous' }],
+          },
+        },
+      },
+    })
+
+    render(<AuthProvider><TestComponent /></AuthProvider>)
+    await waitFor(() => {
+      expect(screen.getByTestId('user')).toHaveTextContent('logged-in')
+      expect(screen.getByTestId('role')).toHaveTextContent('operations_manager')
     })
   })
 })

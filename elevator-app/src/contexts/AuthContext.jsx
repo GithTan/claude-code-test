@@ -9,7 +9,23 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  async function loadProfile(userId) {
+  function isTrialUser(currentUser) {
+    return Boolean(
+      currentUser?.is_anonymous ||
+      currentUser?.app_metadata?.provider === 'anonymous' ||
+      currentUser?.identities?.some(identity => identity.provider === 'anonymous')
+    )
+  }
+
+  async function loadProfile(currentUser) {
+    if (isTrialUser(currentUser)) {
+      setRole('operations_manager')
+      _setViewerRole('operations_manager')
+      setUser(prev => prev ? { ...prev, full_name: 'Trial Access' } : prev)
+      return
+    }
+
+    const userId = currentUser?.id
     const { data, error } = await getProfile(userId)
     if (error || !data) {
       await supabase.auth.signOut()
@@ -28,7 +44,7 @@ export function AuthProvider({ children }) {
       _setAuthToken(session?.access_token ?? null)
       _setViewerRole(null)
       if (session?.user) {
-        loadProfile(session.user.id).finally(() => setLoading(false))
+        loadProfile(session.user).finally(() => setLoading(false))
       } else {
         setLoading(false)
       }
@@ -43,7 +59,7 @@ export function AuthProvider({ children }) {
             // Token silently refreshed — just update the token, no need to reload profile
             return
           }
-          await loadProfile(session.user.id)
+          await loadProfile(session.user)
         } else {
           setRole(null)
           _setViewerRole(null)

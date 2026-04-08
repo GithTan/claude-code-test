@@ -6,7 +6,8 @@ import Login from './Login'
 vi.mock('../lib/supabase', () => ({
   supabase: {
     auth: {
-      signInWithPassword: vi.fn().mockResolvedValue({ error: null })
+      signInWithPassword: vi.fn().mockResolvedValue({ error: null }),
+      signInAnonymously: vi.fn().mockResolvedValue({ error: null })
     }
   }
 }))
@@ -21,6 +22,16 @@ describe('Login', () => {
   it('renders sign in button', () => {
     render(<Login />)
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
+  })
+
+  it('signs in with anonymous trial access when the trial button is clicked', async () => {
+    const { supabase } = await import('../lib/supabase')
+    const user = userEvent.setup()
+    render(<Login />)
+
+    await user.click(screen.getByRole('button', { name: /enter app/i }))
+
+    expect(supabase.auth.signInAnonymously).toHaveBeenCalled()
   })
 
   it('shows error when login fails', async () => {

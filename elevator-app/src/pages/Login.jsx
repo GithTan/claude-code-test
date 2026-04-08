@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-const TRIAL_EMAIL = 'staff@fiec.com'
-const TRIAL_PASSWORD = 'fiec2026'
-
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,10 +23,7 @@ export default function Login() {
   async function handleTrialAccess() {
     setError('')
     setTrialLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({
-      email: TRIAL_EMAIL,
-      password: TRIAL_PASSWORD,
-    })
+    const { error } = await supabase.auth.signInAnonymously()
     if (error) setError('Trial access unavailable. Contact admin.')
     setTrialLoading(false)
   }
