@@ -7,6 +7,7 @@ import {
   PIPELINE_STEPS, deletePipeline, resetPipelineToStep, createOpsProject,
 } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
+import { maskProjectName, shouldBypassUploads } from '../../lib/trialMode'
 
 const STEP_LABELS = Object.fromEntries(PIPELINE_STEPS.map(s => [s.number, s.label]))
 const STEP_GATES = Object.fromEntries(PIPELINE_STEPS.map(s => [s.number, s.gate]))
@@ -104,7 +105,7 @@ function UploadRevisionForm({ step, pipelineId, onDone, onCancel }) {
 const inputStyle = { width: '100%', border: '1px solid #D4AF37', backgroundColor: '#FFFFFF', color: '#2C2C2C', padding: '7px 10px', fontSize: 13, outline: 'none' }
 const labelStyle = { fontSize: 12, fontWeight: 600, color: '#2C2C2C', marginBottom: 4, display: 'block' }
 
-function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
+function StepCompleteForm({ step, pipeline, onDone, onCancel, role, bypassUploads }) {
   const gate = STEP_GATES[step.step_number]
   const docLabel = STEP_DOCUMENT_LABEL[step.step_number]
   const [notes, setNotes] = useState('')
@@ -119,7 +120,7 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
     setSaving(true)
     setError(null)
 
-    if (gate === 'file_required' && !file && step.pipeline_attachments?.length === 0) {
+    if (gate === 'file_required' && !file && step.pipeline_attachments?.length === 0 && !bypassUploads) {
       const doc = STEP_DOCUMENT_LABEL[step.step_number]
       setError(doc ? `You must upload the ${doc} before this step can be completed.` : 'A file attachment is required to complete this step.')
       setSaving(false)
@@ -186,7 +187,7 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
 
       {gate === 'confirm_with_data' && (
         <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#FFFFFF', border: '1px solid #E8E0C8' }}>
-          <p style={{ fontSize: 14, fontWeight: 700, color: '#2C2C2C', marginBottom: 4 }}>{proj?.project_name}</p>
+          <p style={{ fontSize: 14, fontWeight: 700, color: '#2C2C2C', marginBottom: 4 }}>{maskProjectName(proj?.project_name, 'Project')}</p>
           <p style={{ fontSize: 13, color: '#888888', textTransform: 'capitalize' }}>
             {[pipeline.elevator_type?.replace(/_/g, ' '), pipeline.home_elevator_type,
               pipeline.with_structure === true ? 'with structure' : pipeline.with_structure === false ? 'no structure' : null,
@@ -224,16 +225,23 @@ function StepCompleteForm({ step, pipeline, onDone, onCancel, role }) {
 
       {(gate === 'file_required' || gate === 'confirm_optional_file') && (
         <div style={{ marginBottom: 12 }}>
-          {docLabel ? (
+          {docLabel && !bypassUploads ? (
             <div style={{ backgroundColor: '#2C2C2C', padding: '10px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: '#D4AF37', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Required document</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF' }}>{docLabel}</span>
               <span style={{ fontSize: 11, color: '#888888', marginLeft: 'auto' }}>Step cannot be completed without this file</span>
             </div>
           ) : null}
+          {bypassUploads && gate === 'file_required' && (
+            <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: '8px 12px', marginBottom: 10 }}>
+              <p style={{ fontSize: 11, color: '#8B4500', fontWeight: 600 }}>
+                Demo mode — document upload is optional. Upload required when live.
+              </p>
+            </div>
+          )}
           <label style={labelStyle}>
             {gate === 'file_required'
-              ? (docLabel ? `Upload: ${docLabel}` : 'Attach file (required)')
+              ? (bypassUploads ? `Upload: ${docLabel || 'Document'} (optional in demo)` : (docLabel ? `Upload: ${docLabel}` : 'Attach file (required)'))
               : 'Attach file (optional)'}
           </label>
           <input type="file" onChange={e => setFile(e.target.files[0])} style={{ fontSize: 13, width: '100%', marginBottom: 8 }} />
@@ -299,7 +307,7 @@ export default function PipelineDetail() {
   if (!pipeline) return <p className="text-red-500">Pipeline not found.</p>
 
   const steps = [...(pipeline.pipeline_steps || [])].sort((a, b) => a.step_number - b.step_number)
-  const projectLabel = pipeline.installation_projects?.project_name || '—'
+  const projectLabel = maskProjectName(pipeline.installation_projects?.project_name, 'Project')
   const customerLabel = pipeline.installation_projects?.customers?.name || '—'
 
   async function handleOverride() {
@@ -503,6 +511,7 @@ export default function PipelineDetail() {
                   step={step}
                   pipeline={pipeline}
                   role={role}
+                  bypassUploads={shouldBypassUploads()}
                   onDone={async () => { setActiveForm(null); await reload() }}
                   onCancel={() => setActiveForm(null)}
                 />

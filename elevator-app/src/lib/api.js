@@ -4,8 +4,18 @@ import { supabase } from './supabase'
 const _url = import.meta.env.VITE_SUPABASE_URL
 const _key = import.meta.env.VITE_SUPABASE_ANON_KEY
 let _tok = _key
+let _viewerRole = null
 
 export function _setAuthToken(token) { _tok = token || _key }
+export function _setViewerRole(role) { _viewerRole = role || null }
+
+function isAdminViewer() {
+  return _viewerRole === 'admin'
+}
+
+function forbiddenForNonAdmin(message = 'Admin access required.') {
+  return Promise.resolve({ data: null, error: { message } })
+}
 
 function rest(path, opts = {}) {
   const ctrl = new AbortController()
@@ -141,9 +151,11 @@ export async function updateJob(id, data) {
 
 // ─── Invoices ────────────────────────────────────────────────────────────────
 export async function getInvoices() {
+  if (!isAdminViewer()) return forbiddenForNonAdmin()
   return rest('/invoices?select=*,customers(name)&order=issue_date.desc')
 }
 export async function getInvoice(id) {
+  if (!isAdminViewer()) return forbiddenForNonAdmin()
   return restOne(`/invoices?select=*,customers(name),invoice_items(*),payments(*),jobs(elevators(unit_number))&id=eq.${id}`)
 }
 export async function createInvoice(data) {
@@ -167,9 +179,11 @@ export async function deletePayment(id) {
 
 // ─── Installation Projects ───────────────────────────────────────────────────
 export async function getProjects() {
+  if (!isAdminViewer()) return forbiddenForNonAdmin()
   return rest('/installation_projects?select=*,customers(name)&order=created_at.desc')
 }
 export async function getProject(id) {
+  if (!isAdminViewer()) return forbiddenForNonAdmin()
   return restOne(`/installation_projects?select=*,customers(name),payment_milestones(*)&id=eq.${id}`)
 }
 export async function createProject(data) {
@@ -208,21 +222,46 @@ export async function getElevatorStatusOverview() {
   return rest('/elevators?select=status,buildings(name,customers(name))&order=status.asc')
 }
 export async function getUnpaidInvoices() {
+  if (!isAdminViewer()) return forbiddenForNonAdmin()
   return rest('/invoices?select=*,customers(name)&status=in.(unpaid,partially_paid)&order=due_date.asc')
 }
 export async function getPaymentHistory() {
+  if (!isAdminViewer()) return forbiddenForNonAdmin()
   return rest('/payments?select=*,invoices(invoice_number,customers(name))&order=payment_date.desc')
 }
 export async function getMonthlyRevenue() {
+  if (!isAdminViewer()) return forbiddenForNonAdmin()
   return rest('/payments?select=amount,payment_date&order=payment_date.desc')
 }
 
 // ─── AMC Contracts ───────────────────────────────────────────────────────────
 export async function getAmcContracts() {
-  return rest('/amc_contracts?select=*,customers(name)&order=end_date.asc')
+  if (isAdminViewer()) {
+    return rest('/amc_contracts?select=*,customers(name)&order=end_date.asc')
+  }
+  return rest('/amc_contracts?select=id,customer_id,project_name,contact_name,contract_type,start_date,end_date,billing_frequency,coverage_notes,status,renewal_negotiation_status,contract_number,renewal_status,renewal_notes,customers(name)&order=end_date.asc')
 }
 export async function getAmcContract(id) {
-  return restOne(`/amc_contracts?select=*,customers(name)&id=eq.${id}`)
+  if (isAdminViewer()) {
+    return restOne(`/amc_contracts?select=*,customers(name)&id=eq.${id}`)
+  }
+  return restOne(`/amc_contracts?select=id,customer_id,project_name,contact_name,contract_type,start_date,end_date,billing_frequency,coverage_notes,status,renewal_negotiation_status,contract_number,renewal_status,renewal_notes,customers(name)&id=eq.${id}`)
+}
+export async function getAmcActivity(amcContractId) {
+  return rest(`/amc_activity?amc_contract_id=eq.${amcContractId}&order=performed_at.desc&limit=50`)
+}
+export async function getRecentAmcActivity() {
+  if (!isAdminViewer()) return forbiddenForNonAdmin()
+  return rest('/amc_activity?select=*,amc_contracts(contract_number,project_name,customers(name))&order=performed_at.desc&limit=100')
+}
+export async function logAmcActivity(amcContractId, action, details, performedBy) {
+  return restPost('/amc_activity', {
+    amc_contract_id: amcContractId,
+    action,
+    details: details || null,
+    performed_by: performedBy || null,
+    performed_at: new Date().toISOString(),
+  })
 }
 export async function createAmcContract(data) {
   return restPost('/amc_contracts', data)
@@ -234,6 +273,100 @@ export async function getExpiringAmcContracts() {
   const today = new Date().toISOString().split('T')[0]
   const in60days = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   return rest(`/amc_contracts?select=*,customers(name)&status=eq.active&end_date=lte.${in60days}&end_date=gte.${today}&order=end_date.asc`)
+}
+
+export async function getAmcBillingRecords(billingMonth) {
+  return rest(`/amc_billing_records?select=*,amc_contracts(contract_number,project_name,customer_id,customers(name))&billing_month=eq.${billingMonth}&order=created_at.asc`)
+}
+
+export async function createAmcBillingRecord(data) {
+  return restPost('/amc_billing_records', data)
+}
+
+export async function updateAmcBillingRecord(id, data) {
+  return restPatch(`/amc_billing_records?id=eq.${id}`, data)
+}
+
+export async function getAmcBillingTrackerMonth(billingMonth) {
+  const [contractsRes, recordsRes] = await Promise.all([
+    getAmcContracts(),
+    getAmcBillingRecords(billingMonth),
+  ])
+
+  if (contractsRes.error) return { data: null, error: contractsRes.error }
+  if (recordsRes.error) return { data: null, error: recordsRes.error }
+
+  const monthStart = new Date(`${billingMonth}T00:00:00`)
+  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
+  const recordsByContract = new Map((recordsRes.data || []).map(record => [record.amc_contract_id, record]))
+
+  const activeContracts = (contractsRes.data || []).filter(contract => {
+    if (contract.status !== 'active') return false
+    if (!contract.start_date || !contract.end_date) return true
+
+    const start = new Date(`${contract.start_date}T00:00:00`)
+    const end = new Date(`${contract.end_date}T00:00:00`)
+    return start <= monthEnd && end >= monthStart
+  })
+
+  const rows = activeContracts.map(contract => {
+    const record = recordsByContract.get(contract.id)
+    return {
+      contract,
+      record: record || null,
+      amount: Number(record?.amount ?? contract.monthly_fee ?? 0),
+      status: record?.status || 'pending',
+    }
+  })
+
+  return { data: rows, error: null }
+}
+
+export async function markAmcBillingStatus(contract, billingMonth, nextStatus, performedBy) {
+  const { data: existing, error } = await restOne(`/amc_billing_records?select=*&amc_contract_id=eq.${contract.id}&billing_month=eq.${billingMonth}`)
+  if (error) return { data: null, error }
+
+  const now = new Date().toISOString()
+  const payload = {
+    amount: Number(existing?.amount ?? contract.monthly_fee ?? 0),
+    status: nextStatus,
+    updated_at: now,
+  }
+
+  if (nextStatus === 'billed') {
+    payload.billed_at = existing?.billed_at || now
+    payload.paid_at = existing?.status === 'paid' ? existing.paid_at : null
+  }
+
+  if (nextStatus === 'paid') {
+    payload.billed_at = existing?.billed_at || now
+    payload.paid_at = now
+  }
+
+  if (nextStatus === 'pending') {
+    payload.billed_at = null
+    payload.paid_at = null
+  }
+
+  const previousStatus = existing?.status || 'pending'
+  const result = existing?.id
+    ? await updateAmcBillingRecord(existing.id, payload)
+    : await createAmcBillingRecord({
+    amc_contract_id: contract.id,
+    billing_month: billingMonth,
+    ...payload,
+  })
+
+  if (!result.error && performedBy && previousStatus !== nextStatus) {
+    await logAmcActivity(
+      contract.id,
+      'billing_status_updated',
+      `Monthly billing for ${billingMonth} changed from ${previousStatus} to ${nextStatus}.`,
+      performedBy
+    )
+  }
+
+  return result
 }
 
 // ─── Breakdowns ──────────────────────────────────────────────────────────────
@@ -294,7 +427,10 @@ export async function getPipelines() {
 }
 
 export async function getPipeline(id) {
-  return restOne(`/pipelines?select=*,installation_projects(project_name,contract_amount,vat_inclusive,customers(name)),pipeline_steps(*,pipeline_attachments(*))&id=eq.${id}`)
+  if (isAdminViewer()) {
+    return restOne(`/pipelines?select=*,installation_projects(project_name,contract_amount,vat_inclusive,customers(name)),pipeline_steps(*,pipeline_attachments(*))&id=eq.${id}`)
+  }
+  return restOne(`/pipelines?select=*,installation_projects(project_name,customers(name)),pipeline_steps(*,pipeline_attachments(*))&id=eq.${id}`)
 }
 
 export async function createPipeline(data) {
@@ -416,22 +552,26 @@ export async function getAlerts() {
   const prodCutoff = new Date(Date.now() - 23 * 86400000).toISOString().split('T')[0]
   const overdueCutoff = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]
   const today = new Date().toISOString().split('T')[0]
-  const [prod, del, overdue, nextActionDue] = await Promise.all([
+  const escalationCutoff = new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0]
+  const [prod, del, overdue, nextActionDue, escalations] = await Promise.all([
     rest(`/ops_projects?select=id,project_name,production_start_date&status=eq.on_going_production&production_start_date=lte.${prodCutoff}&deletion_pending=eq.false`),
     rest('/ops_projects?select=id,project_name,deletion_requested_by,deletion_requested_at&deletion_pending=eq.true'),
     rest(`/ops_projects?select=id,project_name,last_updated_at,status&last_updated_at=lte.${overdueCutoff}&status=neq.handed_over&deletion_pending=eq.false`),
     rest(`/ops_projects?select=id,project_name,next_action,next_action_date,assigned_to&next_action_date=lte.${today}&next_action=not.is.null&status=neq.handed_over`),
+    rest(`/ops_projects?select=id,project_name,next_action,next_action_date,assigned_to,owner_role&next_action_date=lte.${escalationCutoff}&next_action=not.is.null&status=neq.handed_over`),
   ])
   const production = prod.data || []
   const deletions = del.data || []
   const overdueUpdates = overdue.data || []
   const actionsDue = nextActionDue.data || []
+  const escalated = escalations.data || []
   return {
     production,
     deletions,
     overdueUpdates,
     actionsDue,
-    total: production.length + deletions.length + overdueUpdates.length + actionsDue.length,
+    escalated,
+    total: production.length + deletions.length + overdueUpdates.length + actionsDue.length + escalated.length,
   }
 }
 
@@ -483,6 +623,11 @@ export async function createActionItem(text, createdByName) {
   const expiresAt = new Date(Date.now() + 3 * 86400000).toISOString()
   return restPost('/action_items', { text, created_by_name: createdByName, expires_at: expiresAt, is_active: true })
 }
+export async function getRecentlyConfirmedItems() {
+  const since = new Date(Date.now() - 1 * 86400000).toISOString()
+  return rest(`/action_items?is_active=eq.false&checked_at=gte.${encodeURIComponent(since)}&order=checked_at.desc&limit=10`)
+}
+
 export async function checkOffActionItem(id, checkedByName) {
   return restPatch(`/action_items?id=eq.${id}`, {
     is_active: false,
@@ -500,6 +645,10 @@ export async function getFinishedOpsProjects() {
 export async function getProjectActivity(opsProjectId) {
   return rest(`/project_activity?ops_project_id=eq.${opsProjectId}&order=performed_at.desc&limit=50`)
 }
+export async function getRecentProjectActivity() {
+  if (!isAdminViewer()) return forbiddenForNonAdmin()
+  return rest('/project_activity?select=*,ops_projects(project_name)&order=performed_at.desc&limit=100')
+}
 export async function logProjectActivity(opsProjectId, action, details, performedBy) {
   return restPost('/project_activity', {
     ops_project_id: opsProjectId,
@@ -508,6 +657,21 @@ export async function logProjectActivity(opsProjectId, action, details, performe
     performed_by: performedBy || null,
     performed_at: new Date().toISOString(),
   })
+}
+
+export async function logSensitivePageAccess(pageKey, pageLabel, pagePath, viewedBy, role) {
+  return restPost('/sensitive_page_access', {
+    page_key: pageKey,
+    page_label: pageLabel,
+    page_path: pagePath,
+    viewed_by: viewedBy || null,
+    viewer_role: role || null,
+    viewed_at: new Date().toISOString(),
+  })
+}
+export async function getSensitivePageAccess() {
+  if (!isAdminViewer()) return forbiddenForNonAdmin()
+  return rest('/sensitive_page_access?select=*&order=viewed_at.desc&limit=100')
 }
 
 // ─── Comments ─────────────────────────────────────────────────────────────────
@@ -546,13 +710,34 @@ export async function getUnpaidMilestones() {
 export async function getWarrantyAlerts() {
   const today = new Date().toISOString().split('T')[0]
   const in7days = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
-  const in10days = new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0]
-  // Expiring within 7 days
-  const expiring = await rest(`/ops_projects?select=id,project_name,maintenance_end_date&maintenance_end_date=gte.${today}&maintenance_end_date=lte.${in7days}&status=neq.handed_over`)
-  // Expired in last 10 days — renewal follow-up for boss
-  const expired = await rest(`/ops_projects?select=id,project_name,maintenance_end_date,renewal_negotiation_status&maintenance_end_date=lt.${today}&maintenance_end_date=gte.${new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0]}&renewal_negotiation_status=in.(none,in_negotiation)`)
+  const in30days = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]
+  const last10days = new Date(Date.now() - 10 * 86400000).toISOString().split('T')[0]
+  const last30days = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+  const [expiring, expired, amcExpiring, amcFollowup] = await Promise.all([
+    // ops_projects warranty expiring within 7 days
+    rest(`/ops_projects?select=id,project_name,maintenance_end_date&maintenance_end_date=gte.${today}&maintenance_end_date=lte.${in7days}&status=neq.handed_over`),
+    // ops_projects expired in last 10 days, renewal pending
+    rest(`/ops_projects?select=id,project_name,maintenance_end_date,renewal_negotiation_status&maintenance_end_date=lt.${today}&maintenance_end_date=gte.${last10days}&renewal_negotiation_status=in.(none,in_negotiation)`),
+    // AMC contracts expiring within 30 days
+    rest(`/amc_contracts?select=id,contract_number,end_date,customers(name)&status=eq.active&end_date=lte.${in30days}&end_date=gte.${today}&order=end_date.asc`),
+    // AMC contracts expired in last 30 days — renewal not finalized
+    rest(`/amc_contracts?select=id,contract_number,end_date,renewal_status,customers(name)&end_date=lt.${today}&end_date=gte.${last30days}&order=end_date.asc`),
+  ])
+  // Filter amcFollowup: exclude renewed/not_renewing (handle missing column gracefully)
+  const amcFollowupData = (amcFollowup.data || []).filter(
+    c => !['renewed', 'not_renewing'].includes(c.renewal_status)
+  )
   return {
     expiring: expiring.data || [],
     renewalFollowup: expired.data || [],
+    amcExpiring: amcExpiring.data || [],
+    amcRenewalFollowup: amcFollowupData,
   }
+}
+
+export async function updateAmcRenewal(id, renewalStatus, renewalNotes) {
+  return restPatch(`/amc_contracts?id=eq.${id}`, {
+    renewal_status: renewalStatus,
+    renewal_notes: renewalNotes,
+  })
 }

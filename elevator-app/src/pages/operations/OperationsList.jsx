@@ -1,7 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getOpsProjects } from '../../lib/api'
-import { TEAM_MEMBERS } from './OpsProjectDetail'
+import { getOpsProjects, updateOpsProject } from '../../lib/api'
+import { useAuth } from '../../contexts/AuthContext'
+import useIsMobile from '../../hooks/useIsMobile'
+import {
+  OWNER_ROLES,
+  TEAM_MEMBERS,
+  formatMissingList,
+  getMissingOwnershipFields,
+  getMissingRequiredDocuments,
+  isEscalated,
+  isNextActionOverdue,
+  projectNeedsApprovals,
+  shouldRequireApprovalDocuments,
+  shouldRequireWorkflowOwnership,
+} from './workflow'
+import { maskProjectName } from '../../lib/trialMode'
 
 // Handed over projects are moved to Finished Projects page
 
@@ -32,6 +46,59 @@ function StatusBadge({ status }) {
   )
 }
 
+function QuickStatusBadge({ project, isEditing, isSaving, onToggle, onSelect }) {
+  const ref = useRef()
+  const s = statusDef(project.status)
+
+  useEffect(() => {
+    if (!isEditing) return
+    function handleOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) onToggle()
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [isEditing, onToggle])
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        onClick={e => { e.preventDefault(); e.stopPropagation(); if (!isSaving) onToggle() }}
+        title="Click to change status"
+        style={{
+          backgroundColor: s.bg, color: s.color, padding: '3px 9px', fontSize: 11,
+          fontWeight: 700, whiteSpace: 'nowrap', border: 'none', cursor: isSaving ? 'default' : 'pointer',
+          opacity: isSaving ? 0.6 : 1,
+        }}>
+        {isSaving ? 'Saving…' : s.label + ' ▾'}
+      </button>
+      {isEditing && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, zIndex: 200,
+          backgroundColor: '#FFFFFF', border: '1px solid #D4AF37',
+          minWidth: 230, maxHeight: 300, overflowY: 'auto',
+        }}>
+          {OPS_STATUSES.map(opt => (
+            <button
+              key={opt.value}
+              onClick={e => { e.stopPropagation(); onSelect(opt.value) }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                padding: '7px 10px', border: 'none', borderBottom: '1px solid #E8E0C8',
+                backgroundColor: opt.value === project.status ? '#F5F5DC' : '#FFFFFF',
+                cursor: 'pointer', textAlign: 'left',
+              }}>
+              <span style={{ backgroundColor: opt.bg, color: opt.color, padding: '2px 7px', fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
+                {opt.label}
+              </span>
+              {opt.value === project.status && <span style={{ fontSize: 10, color: '#888888' }}>current</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function QADot({ done, label }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -54,16 +121,78 @@ function daysSince(dateStr) {
   return Math.floor((Date.now() - new Date(dateStr)) / 86400000)
 }
 
+function roleLabel(role) {
+  if (role === 'finance') return 'Finance'
+  if (role === 'admin') return 'Admin / Owner'
+  return 'Operations / PIC / Engineer'
+}
+
 export default function OperationsList() {
+  const { user } = useAuth()
+  const isMobile = useIsMobile(900)
   const [projects, setProjects] = useState([])
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [picFilter, setPicFilter] = useState('all')
+  const [ownerRoleFilter, setOwnerRoleFilter] = useState('all')
+  const [assignedFilter, setAssignedFilter] = useState('all')
+  const [queueFilter, setQueueFilter] = useState('all')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [editingStatus, setEditingStatus] = useState(null)  // project id
+  const [savingStatus, setSavingStatus] = useState(null)    // project id
+
+  async function handleStatusChange(projectId, newStatus) {
+    const target = projects.find(p => p.id === projectId)
+    if (!target || newStatus === target.status) {
+      setEditingStatus(null)
+      return
+    }
+
+    if (shouldRequireWorkflowOwnership(newStatus)) {
+      const missingOwnership = getMissingOwnershipFields(target)
+      if (missingOwnership.length) {
+        setError(`${maskProjectName(target.project_name)}: set the ${formatMissingList(missingOwnership)} before moving this project.`)
+        setEditingStatus(null)
+        return
+      }
+    }
+
+    if (shouldRequireApprovalDocuments(OPS_STATUSES, newStatus)) {
+      const missingDocuments = getMissingRequiredDocuments(target)
+      if (missingDocuments.length) {
+        setError(`${maskProjectName(target.project_name)}: complete ${formatMissingList(missingDocuments.map(doc => doc.label.toLowerCase()))} before moving this project.`)
+        setEditingStatus(null)
+        return
+      }
+    }
+
+    setError('')
+    setSavingStatus(projectId)
+    setEditingStatus(null)
+    const { error } = await updateOpsProject(projectId, {
+      status: newStatus,
+      last_updated_at: new Date().toISOString(),
+      ...(user?.email ? { last_updated_by: user.email } : {}),
+    })
+    if (!error) {
+      setProjects(prev =>
+        newStatus === 'handed_over'
+          ? prev.filter(p => p.id !== projectId)
+          : prev.map(p => p.id === projectId ? { ...p, status: newStatus, last_updated_at: new Date().toISOString() } : p)
+      )
+    }
+    setSavingStatus(null)
+  }
 
   useEffect(() => {
     // Only load active (non-handed-over) projects
-    getOpsProjects().then(({ data }) => {
+    getOpsProjects().then(({ data, error }) => {
+      if (error) {
+        setError(error.message || 'Could not load Project Status.')
+        setLoading(false)
+        return
+      }
       setProjects((data || []).filter(p => p.status !== 'handed_over'))
       setLoading(false)
     })
@@ -74,10 +203,21 @@ export default function OperationsList() {
   const activeCount = projects.length
 
   const pics = ['all', ...TEAM_MEMBERS]
+  const assignedOptions = ['all', ...new Set(projects.map(p => p.assigned_to).filter(Boolean))]
 
   const filtered = projects
     .filter(p => filter === 'all' || p.status === filter)
     .filter(p => picFilter === 'all' || p.pic === picFilter)
+    .filter(p => ownerRoleFilter === 'all' || p.owner_role === ownerRoleFilter)
+    .filter(p => assignedFilter === 'all' || p.assigned_to === assignedFilter)
+    .filter(p => {
+      if (queueFilter === 'all') return true
+      if (queueFilter === 'overdue') return isNextActionOverdue(p)
+      if (queueFilter === 'escalated') return isEscalated(p)
+      if (queueFilter === 'missing_approvals') return projectNeedsApprovals(p)
+      if (queueFilter === 'missing_owner') return getMissingOwnershipFields(p).length > 0
+      return true
+    })
     .filter(p => {
       if (!search) return true
       const q = search.toLowerCase()
@@ -94,15 +234,19 @@ export default function OperationsList() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-1">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', marginBottom: 4, flexDirection: isMobile ? 'column' : 'row', gap: 12 }}>
         <h1 className="text-2xl font-bold" style={{ color: '#2C2C2C' }}>Project Status</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, width: isMobile ? '100%' : 'auto', flexDirection: isMobile ? 'column' : 'row' }}>
+          <Link to="/operations/timeline"
+            style={{ border: '1px solid #D4AF37', color: '#888888', padding: '8px 14px', fontSize: 13, fontWeight: 600, textAlign: 'center' }}>
+            Timeline →
+          </Link>
           <Link to="/operations/finished"
-            style={{ border: '1px solid #D4AF37', color: '#888888', padding: '8px 14px', fontSize: 13, fontWeight: 600 }}>
-            Finished Projects →
+            style={{ border: '1px solid #D4AF37', color: '#888888', padding: '8px 14px', fontSize: 13, fontWeight: 600, textAlign: 'center' }}>
+            Finished →
           </Link>
           <Link to="/operations/new"
-            style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 16px', fontSize: 13, fontWeight: 600 }}>
+            style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 16px', fontSize: 13, fontWeight: 600, textAlign: 'center' }}>
             + Add Project
           </Link>
         </div>
@@ -111,46 +255,73 @@ export default function OperationsList() {
         Active projects only — from production through installation and T&C. Handed over projects are in Finished Projects.
       </p>
 
-      {/* Search + PIC filter */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      {error && (
+        <div style={{ backgroundColor: '#FFF4F0', border: '1px solid #8B0000', padding: '10px 14px', marginBottom: 16 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: '#8B0000', marginBottom: 2 }}>Project Status notice</p>
+          <p style={{ fontSize: 12, color: '#8B0000' }}>{error}</p>
+        </div>
+      )}
+
+      {/* Search + filters */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexDirection: 'column' }}>
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search project name, address, contact, concerns…"
           style={{ flex: 1, border: '1px solid #D4AF37', backgroundColor: '#FFFFFF', color: '#2C2C2C', padding: '8px 12px', fontSize: 13, outline: 'none' }}
         />
-        <select value={picFilter} onChange={e => setPicFilter(e.target.value)}
-          style={{ border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '8px 12px', fontSize: 13 }}>
-          {pics.map(p => <option key={p} value={p}>{p === 'all' ? 'All PICs' : p}</option>)}
-        </select>
-        {(search || picFilter !== 'all' || filter !== 'all') && (
-          <button onClick={() => { setSearch(''); setPicFilter('all'); setFilter('all') }}
-            style={{ border: '1px solid #D4AF37', backgroundColor: '#FFFFFF', color: '#888888', padding: '8px 12px', fontSize: 12, cursor: 'pointer' }}>
-            Clear
-          </button>
-        )}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(5, minmax(0, 1fr))', gap: 8 }}>
+          <select value={picFilter} onChange={e => setPicFilter(e.target.value)}
+            style={{ border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '8px 12px', fontSize: 13 }}>
+            {pics.map(p => <option key={p} value={p}>{p === 'all' ? 'All PICs' : p}</option>)}
+          </select>
+          <select value={ownerRoleFilter} onChange={e => setOwnerRoleFilter(e.target.value)}
+            style={{ border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '8px 12px', fontSize: 13 }}>
+            <option value="all">All owners</option>
+            {OWNER_ROLES.map(role => <option key={role.value} value={role.value}>{role.label}</option>)}
+          </select>
+          <select value={assignedFilter} onChange={e => setAssignedFilter(e.target.value)}
+            style={{ border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '8px 12px', fontSize: 13 }}>
+            {assignedOptions.map(person => <option key={person} value={person}>{person === 'all' ? 'All assignees' : person}</option>)}
+          </select>
+          <select value={queueFilter} onChange={e => setQueueFilter(e.target.value)}
+            style={{ border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '8px 12px', fontSize: 13 }}>
+            <option value="all">All queues</option>
+            <option value="overdue">Overdue next action</option>
+            <option value="escalated">Escalated 3d+</option>
+            <option value="missing_approvals">Missing approvals</option>
+            <option value="missing_owner">Missing ownership</option>
+          </select>
+          {(search || picFilter !== 'all' || filter !== 'all' || ownerRoleFilter !== 'all' || assignedFilter !== 'all' || queueFilter !== 'all') && (
+            <button onClick={() => { setSearch(''); setPicFilter('all'); setFilter('all'); setOwnerRoleFilter('all'); setAssignedFilter('all'); setQueueFilter('all') }}
+              style={{ border: '1px solid #D4AF37', backgroundColor: '#FFFFFF', color: '#888888', padding: '8px 12px', fontSize: 12, cursor: 'pointer' }}>
+              Clear filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Quick stats */}
-      <div className="flex gap-3 mb-5 flex-wrap">
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'stretch' }}>
         {[
           { label: 'Active', value: activeCount, filter: 'all' },
           { label: 'In Production', value: projects.filter(p => p.status === 'on_going_production').length, filter: 'on_going_production' },
           { label: 'Awaiting Shaft', value: projects.filter(p => p.status === 'awaiting_shaft_readiness').length, filter: 'awaiting_shaft_readiness' },
-          { label: 'Unit Delivered', value: projects.filter(p => p.status === 'unit_delivered_awaiting_shaft').length, filter: 'unit_delivered_awaiting_shaft' },
+          { label: 'Escalated 3d+', value: projects.filter(isEscalated).length, queue: 'escalated' },
+          { label: 'Missing Approvals', value: projects.filter(projectNeedsApprovals).length, queue: 'missing_approvals' },
           { label: 'For Handover', value: projects.filter(p => p.status === 'for_handover').length, filter: 'for_handover' },
         ].map(s => (
-          <button key={s.filter} onClick={() => setFilter(s.filter)}
+          <button key={s.label} onClick={() => { setFilter(s.filter || 'all'); setQueueFilter(s.queue || 'all') }}
             style={{
               padding: '10px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-              backgroundColor: filter === s.filter ? '#D4AF37' : '#F5F5DC',
+              backgroundColor: (filter === (s.filter || 'all') && queueFilter === (s.queue || 'all')) ? '#D4AF37' : '#F5F5DC',
               color: '#2C2C2C', border: '1px solid #D4AF37',
             }}>
             {s.value} {s.label}
           </button>
         ))}
         <select value={filter} onChange={e => setFilter(e.target.value)}
-          style={{ marginLeft: 'auto', border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '8px 12px', fontSize: 13 }}>
+          style={{ marginLeft: isMobile ? 0 : 'auto', width: isMobile ? '100%' : 'auto', border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', color: '#2C2C2C', padding: '8px 12px', fontSize: 13 }}>
           <option value="all">All Statuses</option>
           {OPS_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
@@ -176,11 +347,15 @@ export default function OperationsList() {
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
                   <Link to={`/operations/${p.id}`} style={{ fontSize: 15, fontWeight: 700, color: '#2C2C2C', textDecoration: 'none', flex: 1, marginRight: 8 }}>
-                    {p.project_name}
+                    {maskProjectName(p.project_name)}
                   </Link>
-                  <span style={{ backgroundColor: s.bg, color: s.color, padding: '3px 8px', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    {s.label}
-                  </span>
+                  <QuickStatusBadge
+                    project={p}
+                    isEditing={editingStatus === p.id}
+                    isSaving={savingStatus === p.id}
+                    onToggle={() => setEditingStatus(prev => prev === p.id ? null : p.id)}
+                    onSelect={v => handleStatusChange(p.id, v)}
+                  />
                 </div>
                 {p.address && <p style={{ fontSize: 12, color: '#888888', marginBottom: 4 }}>{p.address}</p>}
                 <div style={{ display: 'flex', gap: 12, marginBottom: 6, fontSize: 12 }}>
@@ -189,8 +364,15 @@ export default function OperationsList() {
                 </div>
                 {p.next_action
                   ? <p style={{ fontSize: 12, color: '#8B4500', marginBottom: 4 }}>→ {p.next_action}{p.assigned_to ? ` · ${p.assigned_to}` : ''}</p>
-                  : <p style={{ fontSize: 12, color: '#D4AF37', fontStyle: 'italic', marginBottom: 4 }}>No next action — needs owner</p>
+                  : <p style={{ fontSize: 12, color: '#D4AF37', fontStyle: 'italic', marginBottom: 4 }}>Needs Attention</p>
                 }
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 11, color: '#888888', marginBottom: 4 }}>
+                  <span>Owner: {roleLabel(p.owner_role)}</span>
+                  {p.next_action_date && <span>Due: {p.next_action_date}</span>}
+                  {isEscalated(p) && <span style={{ color: '#8B0000', fontWeight: 700 }}>ESCALATED</span>}
+                  {projectNeedsApprovals(p) && <span style={{ color: '#8B4500', fontWeight: 700 }}>MISSING APPROVALS</span>}
+                  {getMissingOwnershipFields(p).length > 0 && <span style={{ color: '#D4AF37', fontWeight: 700 }}>OWNER INFO NEEDED</span>}
+                </div>
                 {p.concerns && <p style={{ fontSize: 12, color: '#666666', marginBottom: 6 }}>{p.concerns}</p>}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingTop: 8, borderTop: '1px solid #E8E0C8' }}>
                   {p.last_updated_at
@@ -241,7 +423,7 @@ export default function OperationsList() {
                         <Link to={`/operations/${p.id}`} style={{ color: '#2C2C2C', textDecoration: 'none', fontWeight: 600 }}
                           onMouseEnter={e => e.target.style.color = '#D4AF37'}
                           onMouseLeave={e => e.target.style.color = '#2C2C2C'}>
-                          {p.project_name}
+                          {maskProjectName(p.project_name)}
                         </Link>
                         {brandNew && (
                           <span style={{ fontSize: 9, fontWeight: 700, backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '1px 5px', letterSpacing: '0.05em' }}>NEW</span>
@@ -258,8 +440,18 @@ export default function OperationsList() {
                       )}
                       {p.next_action
                         ? <p style={{ fontSize: 11, color: '#8B4500', marginTop: 3 }}>→ {p.next_action}{p.assigned_to ? ` · ${p.assigned_to}` : ''}</p>
-                        : <p style={{ fontSize: 11, color: '#D4AF37', marginTop: 3, fontStyle: 'italic' }}>No next action — needs owner</p>
+                        : <p style={{ fontSize: 11, color: '#D4AF37', marginTop: 3, fontStyle: 'italic' }}>Needs Attention</p>
                       }
+                      <p style={{ fontSize: 10, color: '#888888', marginTop: 2 }}>
+                        Owner: {roleLabel(p.owner_role)}
+                        {p.next_action_date ? ` · Due ${p.next_action_date}` : ''}
+                        {isEscalated(p) ? ' · Escalated' : ''}
+                      </p>
+                      {(projectNeedsApprovals(p) || getMissingOwnershipFields(p).length > 0) && (
+                        <p style={{ fontSize: 10, color: '#8B4500', marginTop: 2 }}>
+                          {projectNeedsApprovals(p) ? 'Missing approvals' : 'Ownership info incomplete'}
+                        </p>
+                      )}
                       {p.last_updated_at && (
                         <p style={{ fontSize: 10, color: '#AAAAAA', marginTop: 2 }}>
                           Updated {daysSince(p.last_updated_at)}d ago{p.last_updated_by ? ` by ${p.last_updated_by}` : ''}
@@ -298,8 +490,14 @@ export default function OperationsList() {
                         <QADot done={p.qa_pre_handover} label="Pre-HO" />
                       </div>
                     </td>
-                    <td style={tdStyle}>
-                      <StatusBadge status={p.status} />
+                    <td style={{ ...tdStyle, position: 'relative' }}>
+                      <QuickStatusBadge
+                        project={p}
+                        isEditing={editingStatus === p.id}
+                        isSaving={savingStatus === p.id}
+                        onToggle={() => setEditingStatus(prev => prev === p.id ? null : p.id)}
+                        onSelect={v => handleStatusChange(p.id, v)}
+                      />
                       {p.stall_reason && (
                         <p style={{ fontSize: 11, color: '#8B4500', marginTop: 4, fontStyle: 'italic' }}>{p.stall_reason}</p>
                       )}
@@ -308,9 +506,17 @@ export default function OperationsList() {
                       {p.concerns || <span style={{ color: '#CCCCCC' }}>—</span>}
                     </td>
                     <td style={{ ...tdStyle, textAlign: 'right' }}>
-                      <Link to={`/operations/${p.id}/edit`} style={{ color: '#D4AF37', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                        Edit →
-                      </Link>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                        <Link to={`/operations/${p.id}/edit`} style={{ color: '#D4AF37', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>
+                          Edit →
+                        </Link>
+                        {(p.status === 'for_handover' || p.status === 'handed_over') && (
+                          <Link to={`/operations/${p.id}/handover`}
+                            style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', fontSize: 11, fontWeight: 700, padding: '3px 8px', whiteSpace: 'nowrap', textDecoration: 'none' }}>
+                            📄 Handover Docs
+                          </Link>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )

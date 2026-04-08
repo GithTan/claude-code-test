@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { _setAuthToken, getProfile } from '../lib/api'
+import { _setAuthToken, _setViewerRole, getProfile } from '../lib/api'
 
 const AuthContext = createContext({})
 
@@ -15,6 +15,8 @@ export function AuthProvider({ children }) {
       await supabase.auth.signOut()
     } else {
       setRole(data.role)
+      _setViewerRole(data.role)
+      setUser(prev => prev ? { ...prev, full_name: data.full_name || prev.full_name || null } : prev)
     }
   }
 
@@ -24,6 +26,7 @@ export function AuthProvider({ children }) {
       clearTimeout(timeout)
       setUser(session?.user ?? null)
       _setAuthToken(session?.access_token ?? null)
+      _setViewerRole(null)
       if (session?.user) {
         loadProfile(session.user.id).finally(() => setLoading(false))
       } else {
@@ -43,6 +46,7 @@ export function AuthProvider({ children }) {
           await loadProfile(session.user.id)
         } else {
           setRole(null)
+          _setViewerRole(null)
         }
         setLoading(false)
       }
@@ -53,6 +57,7 @@ export function AuthProvider({ children }) {
 
   async function signOut() {
     _setAuthToken(null)
+    _setViewerRole(null)
     await supabase.auth.signOut()
   }
 

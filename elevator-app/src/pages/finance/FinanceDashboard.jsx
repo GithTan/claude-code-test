@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getPipelines, getAmcContracts, getJobs, getInvoices, createInvoice, PIPELINE_STEPS } from '../../lib/api'
+import { maskProjectName } from '../../lib/trialMode'
 
 function fmt(amount) {
   return `₱${Number(amount || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
@@ -175,7 +176,7 @@ export default function FinanceDashboard() {
               return (
                 <div key={p.id} className="flex items-center justify-between py-3">
                   <div>
-                    <p className="text-sm font-medium" style={{ color: '#2C2C2C' }}>{proj?.project_name || '—'}</p>
+                    <p className="text-sm font-medium" style={{ color: '#2C2C2C' }}>{maskProjectName(proj?.project_name, 'Project')}</p>
                     <p className="text-xs mt-0.5" style={{ color: '#888888' }}>
                       {p.elevator_type?.replace(/_/g, ' ')} · {p.unit_count} unit{p.unit_count !== 1 ? 's' : ''}
                       {proj?.contract_amount ? ` · ${fmt(proj.contract_amount)}` : ''}

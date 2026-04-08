@@ -187,7 +187,8 @@ function normalizeCase(str) {
 }
 
 export default function PipelineForm() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const isAdmin = role === 'admin'
   const navigate = useNavigate()
   const [form, setForm] = useState({
     project_name: '',
@@ -215,7 +216,11 @@ export default function PipelineForm() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!form.project_name.trim()) { setError('Please enter a project name.'); return }
+    if (!form.project_name.trim()) { setError('Project Name is required — please enter a name before continuing.'); return }
+    if (form.contract_amount && parseFloat(form.contract_amount) > 999999999999999) {
+      setError('Contract Amount is too large. Maximum allowed is ₱999,999,999,999,999.')
+      return
+    }
 
     setSaving(true)
     setError(null)
@@ -274,7 +279,11 @@ export default function PipelineForm() {
     <div style={{ maxWidth: 640 }}>
       <h1 className="text-2xl font-bold mb-6" style={{ color: '#2C2C2C' }}>Start New Pipeline</h1>
 
-      {error && <p style={{ color: '#8B0000', fontSize: 13, marginBottom: 16 }}>{error}</p>}
+      {error && (
+        <div style={{ backgroundColor: '#FFF0F0', border: '1px solid #8B0000', padding: '12px 16px', marginBottom: 16 }}>
+          <p style={{ color: '#8B0000', fontSize: 13, fontWeight: 600 }}>⚠ {error}</p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-5">
 
@@ -289,30 +298,36 @@ export default function PipelineForm() {
               placeholder="e.g. SM Aura Tower Block B" style={inputStyle} required autoFocus />
           </div>
 
-          <div>
-            <label style={labelStyle}>Contract Amount</label>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ fontSize: 14, color: '#888888' }}>₱</span>
-              <input type="number" min="0" step="0.01" placeholder="0.00"
-                value={form.contract_amount}
-                onChange={e => setForm(f => ({ ...f, contract_amount: e.target.value }))}
-                style={{ ...inputStyle, flex: 1 }} />
-              <div style={{ display: 'flex', border: '1px solid #D4AF37', overflow: 'hidden' }}>
-                {[{ label: 'VAT Inc.', v: true }, { label: 'Non-VAT', v: false }].map(opt => (
-                  <button key={String(opt.v)} type="button"
-                    onClick={() => setForm(f => ({ ...f, vat_inclusive: opt.v }))}
-                    style={{
-                      padding: '8px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                      backgroundColor: form.vat_inclusive === opt.v ? '#D4AF37' : '#FFFFFF',
-                      color: form.vat_inclusive === opt.v ? '#2C2C2C' : '#888888',
-                      border: 'none',
-                    }}>
-                    {opt.label}
-                  </button>
-                ))}
+          {isAdmin ? (
+            <div>
+              <label style={labelStyle}>Contract Amount</label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 14, color: '#888888' }}>₱</span>
+                <input type="number" min="0" step="0.01" placeholder="0.00"
+                  value={form.contract_amount}
+                  onChange={e => setForm(f => ({ ...f, contract_amount: e.target.value }))}
+                  style={{ ...inputStyle, flex: 1 }} />
+                <div style={{ display: 'flex', border: '1px solid #D4AF37', overflow: 'hidden' }}>
+                  {[{ label: 'VAT Inc.', v: true }, { label: 'Non-VAT', v: false }].map(opt => (
+                    <button key={String(opt.v)} type="button"
+                      onClick={() => setForm(f => ({ ...f, vat_inclusive: opt.v }))}
+                      style={{
+                        padding: '8px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        backgroundColor: form.vat_inclusive === opt.v ? '#D4AF37' : '#FFFFFF',
+                        color: form.vat_inclusive === opt.v ? '#2C2C2C' : '#888888',
+                        border: 'none',
+                      }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div style={{ padding: '10px 12px', backgroundColor: '#F0F0F0', border: '1px solid #D4AF37' }}>
+              <p style={{ fontSize: 12, color: '#888888' }}>Contract amount — Admin only. You can proceed without it.</p>
+            </div>
+          )}
         </div>
 
         {/* Unit Specs */}

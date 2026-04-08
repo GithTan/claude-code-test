@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getCustomers } from '../../lib/api'
+import { shouldHideContactNumbers } from '../../lib/trialMode'
 
 const thStyle = { padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em', backgroundColor: '#F5F5DC', borderBottom: '1px solid #D4AF37' }
 const tdStyle = { padding: '12px 16px', fontSize: 13, color: '#2C2C2C', borderBottom: '1px solid #E8E0C8' }
 
 export default function CustomerList() {
+  const hideContactNumbers = shouldHideContactNumbers()
   const [customers, setCustomers] = useState([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -77,7 +79,12 @@ export default function CustomerList() {
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = '#FFFFFF'}>
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{c.name}</td>
                   <td style={tdStyle}>{c.contact_person || <span style={{ color: '#CCCCCC' }}>—</span>}</td>
-                  <td style={tdStyle}>{c.phone || <span style={{ color: '#CCCCCC' }}>—</span>}</td>
+                  <td style={tdStyle}>
+                    {hideContactNumbers
+                      ? <span style={{ color: '#CCCCCC', fontStyle: 'italic' }}>Hidden during trial</span>
+                      : (c.phone || <span style={{ color: '#CCCCCC' }}>—</span>)
+                    }
+                  </td>
                   <td style={tdStyle}>{c.email || <span style={{ color: '#CCCCCC' }}>—</span>}</td>
                   <td style={{ ...tdStyle, textAlign: 'right' }}>
                     <Link to={`/customers/${c.id}`} style={{ color: '#D4AF37', fontSize: 13, fontWeight: 600 }}>View →</Link>

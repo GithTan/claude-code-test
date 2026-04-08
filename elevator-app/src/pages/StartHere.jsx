@@ -100,7 +100,9 @@ export default function StartHere() {
             />
             <Step number={2} role={role}
               title="Start a new pipeline"
-              description="Go to Pipeline and click New Pipeline. Enter the project name, elevator type, number of units, and contract amount. The app will guide you through all 12 steps from drawings to turnover."
+              description={role === 'admin'
+                ? 'Go to Pipeline and click New Pipeline. Enter the project name, elevator type, number of units, and contract amount. The app will guide you through all 12 steps from drawings to turnover.'
+                : 'Go to Pipeline and click New Pipeline. Enter the project name, elevator type, and number of units. The app will guide you through all 12 steps from drawings to turnover.'}
               action="New Pipeline" to="/pipeline/new"
               done={hasPipelines}
             />
@@ -128,7 +130,9 @@ export default function StartHere() {
             />
             <Step number={2} role={role}
               title="Create their maintenance contract"
-              description="Go to Maintenance Contracts and create a contract for this customer. Set the monthly fee, billing frequency (monthly, quarterly, etc.), and contract dates."
+              description={role === 'admin'
+                ? 'Go to Maintenance Contracts and create a contract for this customer. Set the monthly fee, billing frequency, and contract dates.'
+                : 'Go to Maintenance Contracts and create a contract for this customer. Set the billing frequency and contract dates.'}
               action="New Contract" to="/contracts/new"
               done={hasContracts}
             />

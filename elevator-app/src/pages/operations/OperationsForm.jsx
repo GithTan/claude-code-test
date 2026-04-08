@@ -3,10 +3,22 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import {
   createOpsProject, getOpsProject, updateOpsProject, deleteOpsProject,
   requestDeletion, createAmcContract, getOpsProjectUnits, createProjectUnits, deleteOpsProjectUnits,
+  logProjectActivity,
 } from '../../lib/api'
 import { OPS_STATUSES, statusDef } from './OperationsList'
-import { TEAM_MEMBERS } from './OpsProjectDetail'
 import { useAuth } from '../../contexts/AuthContext'
+import useIsMobile from '../../hooks/useIsMobile'
+import { shouldHideContactNumbers } from '../../lib/trialMode'
+import {
+  TEAM_MEMBERS,
+  OWNER_ROLES,
+  REQUIRED_DOCUMENTS,
+  formatMissingList,
+  getMissingOwnershipFields,
+  getMissingRequiredDocuments,
+  shouldRequireApprovalDocuments,
+  shouldRequireWorkflowOwnership,
+} from './workflow'
 
 const DRIVE_TYPES = [
   { value: 'traction', label: 'Traction' },
@@ -49,18 +61,20 @@ const EMPTY = {
   brand: '', drive_type: '', use_type: '',
   project_start_date: '', project_end_date: '',
   status: 'awaiting_shaft_readiness', concerns: '', stall_reason: '',
+  owner_role: 'operations', assigned_to: '', next_action: '', next_action_date: '',
   qa_pre_install: false, qa_mid: false, qa_pre_handover: false,
   qa_pre_install_date: '', qa_mid_date: '', qa_pre_handover_date: '',
   maintenance_start_date: '', maintenance_end_date: '', renewal_negotiation_status: 'none',
+  client_contract_approval: false, client_drawing_approval: false, engineer_technical_approval: false, supplier_contract_approval: false,
 }
 
 function defaultExtraUnit(n) {
   return { unit_number: n, unit_label: '', specs: '', brand: '', drive_type: '', use_type: 'passenger', s_o_f: '' }
 }
 
-function QARow({ label, checked, date, onCheck, onDate }) {
+function QARow({ label, checked, date, onCheck, onDate, isMobile }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #E8E0C8' }}>
+    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid #E8E0C8' }}>
       <button type="button" onClick={onCheck}
         style={{
           width: 24, height: 24, borderRadius: '50%', flexShrink: 0, cursor: 'pointer',
@@ -71,7 +85,7 @@ function QARow({ label, checked, date, onCheck, onDate }) {
         }}>
         {checked ? '✓' : ''}
       </button>
-      <span style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C', minWidth: 160 }}>{label}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C', minWidth: isMobile ? 0 : 160 }}>{label}</span>
       {checked && (
         <input type="date" value={date} onChange={e => onDate(e.target.value)}
           style={{ border: '1px solid #D4AF37', padding: '4px 8px', fontSize: 13, color: '#2C2C2C', outline: 'none' }} />
@@ -81,7 +95,7 @@ function QARow({ label, checked, date, onCheck, onDate }) {
   )
 }
 
-function ExtraUnitCard({ unit, index, onChange, onRemove }) {
+function ExtraUnitCard({ unit, index, onChange, onRemove, isMobile }) {
   function set(field, value) { onChange(index, { ...unit, [field]: value }) }
   return (
     <div style={{ border: '1px solid #D4AF37', padding: 16, marginBottom: 10, backgroundColor: '#FFFFFF' }}>
@@ -93,7 +107,7 @@ function ExtraUnitCard({ unit, index, onChange, onRemove }) {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         <div>
           <label style={labelStyle}>Specs / Capacity</label>
           <input value={unit.specs} onChange={e => set('specs', e.target.value)}
@@ -111,7 +125,7 @@ function ExtraUnitCard({ unit, index, onChange, onRemove }) {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 10 }}>
         <div>
           <label style={labelStyle}>Brand</label>
           <input value={unit.brand} onChange={e => set('brand', e.target.value)}
@@ -140,6 +154,8 @@ export default function OperationsForm() {
   const navigate = useNavigate()
   const { role, user } = useAuth()
   const isEdit = Boolean(id)
+  const isMobile = useIsMobile(900)
+  const hideContactNumbers = shouldHideContactNumbers()
 
   // Statuses where installation dates become required
   const MECH_INSTALL_AND_BEYOND = [
@@ -176,6 +192,10 @@ export default function OperationsForm() {
             status: d.status || 'awaiting_shaft_readiness',
             concerns: d.concerns || '',
             stall_reason: d.stall_reason || '',
+            owner_role: d.owner_role || 'operations',
+            assigned_to: d.assigned_to || '',
+            next_action: d.next_action || '',
+            next_action_date: d.next_action_date || '',
             maintenance_start_date: d.maintenance_start_date || '',
             maintenance_end_date: d.maintenance_end_date || '',
             renewal_negotiation_status: d.renewal_negotiation_status || 'none',
@@ -185,6 +205,10 @@ export default function OperationsForm() {
             qa_pre_install_date: d.qa_pre_install_date || '',
             qa_mid_date: d.qa_mid_date || '',
             qa_pre_handover_date: d.qa_pre_handover_date || '',
+            client_contract_approval: d.client_contract_approval || false,
+            client_drawing_approval: d.client_drawing_approval || false,
+            engineer_technical_approval: d.engineer_technical_approval || false,
+            supplier_contract_approval: d.supplier_contract_approval || false,
             deletion_pending: d.deletion_pending || false,
           })
         }
@@ -229,11 +253,33 @@ export default function OperationsForm() {
     const oneYearLater = new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0]
 
     const normalized = normalizeCaseFields(form, TEXT_FIELDS)
+    if (shouldRequireWorkflowOwnership(form.status)) {
+      const missingOwnership = getMissingOwnershipFields(form)
+      if (missingOwnership.length) {
+        setSaving(false)
+        setError(`Set the ${formatMissingList(missingOwnership)} before saving this active project.`)
+        return
+      }
+    }
+
+    if (shouldRequireApprovalDocuments(OPS_STATUSES, form.status)) {
+      const missingDocs = getMissingRequiredDocuments(form)
+      if (missingDocs.length) {
+        setSaving(false)
+        setError(`Complete ${formatMissingList(missingDocs.map(doc => doc.label.toLowerCase()))} before saving this stage.`)
+        return
+      }
+    }
+
     const payload = {
       ...normalized,
+      project_start_date: form.project_start_date || null,
+      project_end_date: form.project_end_date || null,
       qa_pre_install_date: form.qa_pre_install_date || null,
       qa_mid_date: form.qa_mid_date || null,
       qa_pre_handover_date: form.qa_pre_handover_date || null,
+      maintenance_start_date: form.maintenance_start_date || null,
+      maintenance_end_date: form.maintenance_end_date || null,
       ...(isHandingOver && !form.handed_over_date ? {
         handed_over_date: today,
         year_completed: new Date().getFullYear(),
@@ -286,6 +332,17 @@ export default function OperationsForm() {
       })
     }
 
+    if (opsId) {
+      await logProjectActivity(
+        opsId,
+        isEdit ? 'project_updated' : 'project_created',
+        isEdit
+          ? `Project saved from full form. Status: ${payload.status || 'not set'} · Owner: ${payload.owner_role || 'not set'} · Assigned: ${payload.assigned_to || 'not set'}`
+          : `Project created in Project Status. Status: ${payload.status || 'not set'}`,
+        user?.email || role || 'staff'
+      )
+    }
+
     navigate('/operations')
   }
 
@@ -296,11 +353,12 @@ export default function OperationsForm() {
 
   async function handleRequestDeletion() {
     await requestDeletion(id, user?.email || 'staff')
+    await logProjectActivity(id, 'deletion_requested', 'Deletion requested from project form.', user?.email || 'staff')
     setDeleteRequested(true)
   }
 
   return (
-    <div style={{ maxWidth: 640 }}>
+    <div style={{ maxWidth: 760 }}>
       <Link to="/operations" style={{ fontSize: 13, color: '#D4AF37', fontWeight: 600 }}>← Project Status</Link>
 
       <h1 className="text-2xl font-bold mt-3 mb-6" style={{ color: '#2C2C2C' }}>
@@ -319,7 +377,7 @@ export default function OperationsForm() {
               placeholder="e.g. Sm Aura Tower" style={inputStyle} />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
             <div>
               <label style={labelStyle}>Project-in-charge (PIC)</label>
               <select name="pic" value={form.pic} onChange={handleChange} style={inputStyle}>
@@ -334,7 +392,7 @@ export default function OperationsForm() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
             <div>
               <label style={labelStyle}>Contact person</label>
               <input name="contact_person" value={form.contact_person} onChange={handleChange}
@@ -342,8 +400,12 @@ export default function OperationsForm() {
             </div>
             <div>
               <label style={labelStyle}>Contact number</label>
-              <input name="contact_number" value={form.contact_number} onChange={handleChange}
-                placeholder="e.g. 09212925000" style={inputStyle} />
+              {hideContactNumbers ? (
+                <div style={{ ...inputStyle, color: '#CCCCCC', fontStyle: 'italic' }}>Hidden during trial</div>
+              ) : (
+                <input name="contact_number" value={form.contact_number} onChange={handleChange}
+                  placeholder="e.g. 09212925000" style={inputStyle} />
+              )}
             </div>
           </div>
 
@@ -356,7 +418,7 @@ export default function OperationsForm() {
           {(() => {
             const datesRequired = MECH_INSTALL_AND_BEYOND.includes(form.status)
             return (
-              <div className="grid grid-cols-2 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
                 <div>
                   <label style={labelStyle}>
                     Installation start date {datesRequired ? '*' : ''}
@@ -383,6 +445,42 @@ export default function OperationsForm() {
           })()}
         </div>
 
+        <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24 }} className="space-y-4">
+          <p style={sectionTitle}>Owner & next step</p>
+          <p style={{ fontSize: 12, color: '#888888', marginBottom: 12 }}>
+            Every active project should have one accountable owner, one assigned person, and one due next action.
+          </p>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={labelStyle}>Owner role *</label>
+              <select name="owner_role" value={form.owner_role} onChange={handleChange} style={inputStyle}>
+                {OWNER_ROLES.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Assigned to *</label>
+              <select name="assigned_to" value={form.assigned_to} onChange={handleChange} style={inputStyle}>
+                <option value="">Select team member...</option>
+                {TEAM_MEMBERS.map(member => <option key={member} value={member}>{member}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
+            <div>
+              <label style={labelStyle}>Next action *</label>
+              <input name="next_action" value={form.next_action} onChange={handleChange}
+                placeholder="e.g. Confirm delivery schedule with supplier" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Next action date *</label>
+              <input type="date" name="next_action_date" value={form.next_action_date} onChange={handleChange} style={inputStyle} />
+              <p style={{ fontSize: 11, color: '#888888', marginTop: 3 }}>Escalates after 3 days if ignored.</p>
+            </div>
+          </div>
+        </div>
+
         {/* Unit specs — Unit 1 (main fields) */}
         <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24 }}>
           <p style={sectionTitle}>Unit specs</p>
@@ -392,7 +490,7 @@ export default function OperationsForm() {
             Unit 1 {extraUnits.length > 0 ? `(of ${extraUnits.length + 1})` : ''}
           </p>
 
-          <div className="grid grid-cols-3 gap-4" style={{ marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 16, marginBottom: 12 }}>
             <div>
               <label style={labelStyle}>Specs / Capacity</label>
               <input name="specs" value={form.specs} onChange={handleChange}
@@ -410,7 +508,7 @@ export default function OperationsForm() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4" style={{ marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div>
               <label style={labelStyle}>Brand</label>
               <input name="brand" value={form.brand} onChange={handleChange}
@@ -435,7 +533,7 @@ export default function OperationsForm() {
           {/* Extra units */}
           {extraUnits.map((unit, i) => (
             <ExtraUnitCard key={i} unit={unit} index={i}
-              onChange={updateExtraUnit} onRemove={removeExtraUnit} />
+              onChange={updateExtraUnit} onRemove={removeExtraUnit} isMobile={isMobile} />
           ))}
 
           <button type="button" onClick={addExtraUnit}
@@ -444,11 +542,48 @@ export default function OperationsForm() {
           </button>
         </div>
 
+        <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24 }}>
+          <p style={sectionTitle}>Required approvals</p>
+          <p style={{ fontSize: 12, color: '#888888', marginBottom: 16 }}>
+            These approvals should be completed before the project moves into later execution stages.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {REQUIRED_DOCUMENTS.map(doc => (
+              <button
+                key={doc.key}
+                type="button"
+                onClick={() => set(doc.key, !form[doc.key])}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  padding: '12px 14px',
+                  border: '1px solid #D4AF37',
+                  backgroundColor: form[doc.key] ? '#D4AF37' : '#FFFFFF',
+                  color: '#2C2C2C',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 700 }}>{doc.label}</p>
+                  <p style={{ fontSize: 11, color: form[doc.key] ? '#2C2C2C' : '#888888', marginTop: 3 }}>{doc.help}</p>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700 }}>
+                  {form[doc.key] ? 'Complete' : 'Pending'}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Status */}
         <div style={{ backgroundColor: '#F5F5DC', border: '1px solid #D4AF37', padding: 24 }}>
           <p style={sectionTitle}>Project status</p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 8, marginBottom: 16 }}>
             {OPS_STATUSES.map(s => (
               <button key={s.value} type="button" onClick={() => set('status', s.value)}
                 style={{
@@ -498,6 +633,7 @@ export default function OperationsForm() {
             date={form.qa_pre_install_date}
             onCheck={() => set('qa_pre_install', !form.qa_pre_install)}
             onDate={v => set('qa_pre_install_date', v)}
+            isMobile={isMobile}
           />
           <QARow
             label="Mid-installation check"
@@ -505,6 +641,7 @@ export default function OperationsForm() {
             date={form.qa_mid_date}
             onCheck={() => set('qa_mid', !form.qa_mid)}
             onDate={v => set('qa_mid_date', v)}
+            isMobile={isMobile}
           />
           <QARow
             label="Pre-handover check"
@@ -512,6 +649,7 @@ export default function OperationsForm() {
             date={form.qa_pre_handover_date}
             onCheck={() => set('qa_pre_handover', !form.qa_pre_handover)}
             onDate={v => set('qa_pre_handover_date', v)}
+            isMobile={isMobile}
           />
         </div>
 
@@ -520,7 +658,7 @@ export default function OperationsForm() {
           <p style={sectionTitle}>Warranty & maintenance</p>
           <p style={{ fontSize: 12, color: '#888888', marginBottom: 16 }}>Set dates to activate 7-day expiry alert and 10-day renewal follow-up.</p>
 
-          <div className="grid grid-cols-2 gap-4" style={{ marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16, marginBottom: 12 }}>
             <div>
               <label style={labelStyle}>Warranty start date</label>
               <input type="date" name="maintenance_start_date" value={form.maintenance_start_date} onChange={handleChange} style={inputStyle} />
@@ -550,14 +688,14 @@ export default function OperationsForm() {
 
         {error && <p style={{ color: '#8B0000', fontSize: 13 }}>{error}</p>}
 
-        <div className="flex justify-between items-center pt-2">
-          <div className="flex gap-3">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', paddingTop: 8, flexDirection: isMobile ? 'column' : 'row', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 12, flexDirection: isMobile ? 'column' : 'row', width: isMobile ? '100%' : 'auto' }}>
             <button type="submit" disabled={saving}
-              style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 20px', fontWeight: 600, fontSize: 14, opacity: saving ? 0.5 : 1 }}>
+              style={{ backgroundColor: '#D4AF37', color: '#2C2C2C', padding: '8px 20px', fontWeight: 600, fontSize: 14, opacity: saving ? 0.5 : 1, width: isMobile ? '100%' : 'auto' }}>
               {saving ? 'Saving…' : 'Save'}
             </button>
             <button type="button" onClick={() => navigate('/operations')}
-              style={{ backgroundColor: '#FFFFFF', color: '#2C2C2C', padding: '8px 20px', border: '1px solid #D4AF37', fontSize: 14 }}>
+              style={{ backgroundColor: '#FFFFFF', color: '#2C2C2C', padding: '8px 20px', border: '1px solid #D4AF37', fontSize: 14, width: isMobile ? '100%' : 'auto' }}>
               Cancel
             </button>
           </div>

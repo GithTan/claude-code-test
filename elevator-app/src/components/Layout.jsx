@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useEffect, useRef, useState } from 'react'
-import { getAlerts, approveDeletion, denyDeletion, getWarrantyAlerts } from '../lib/api'
+import { getAlerts, approveDeletion, denyDeletion, getWarrantyAlerts, logProjectActivity } from '../lib/api'
+import { maskProjectName } from '../lib/trialMode'
 
 const navItems = [
   { label: '⬡ Start Here', to: '/start' },
@@ -9,12 +10,14 @@ const navItems = [
   { label: 'Customers', to: '/customers' },
   { label: 'New Installations', to: '/pipeline' },
   { label: 'Maintenance Contracts', to: '/contracts' },
+  { label: 'AMC Billing', to: '/contracts/billing', adminOnly: true },
   { label: 'Project Status', to: '/operations' },
   { label: 'Service Visits', to: '/jobs' },
   { label: 'Breakdown Calls', to: '/breakdowns' },
   { label: 'Finance', to: '/finance', adminOnly: true },
   { label: 'Invoices', to: '/invoices', adminOnly: true },
   { label: 'Reports', to: '/reports', adminOnly: true },
+  { label: 'Admin Audit', to: '/admin/audit', adminOnly: true },
 ]
 
 function daysSince(dateStr) {
@@ -22,9 +25,9 @@ function daysSince(dateStr) {
   return Math.floor((Date.now() - new Date(dateStr)) / 86400000)
 }
 
-function NotificationBell({ role }) {
-  const [alerts, setAlerts] = useState({ production: [], deletions: [], overdueUpdates: [], actionsDue: [], total: 0 })
-  const [warranty, setWarranty] = useState({ expiring: [], renewalFollowup: [] })
+function NotificationBell({ role, user }) {
+  const [alerts, setAlerts] = useState({ production: [], deletions: [], overdueUpdates: [], actionsDue: [], escalated: [], total: 0 })
+  const [warranty, setWarranty] = useState({ expiring: [], renewalFollowup: [], amcExpiring: [], amcRenewalFollowup: [] })
   const [open, setOpen] = useState(false)
   const [acting, setActing] = useState(null)
   const panelRef = useRef(null)
@@ -52,6 +55,7 @@ function NotificationBell({ role }) {
 
   async function handleApprove(id) {
     setActing(id)
+    await logProjectActivity(id, 'deletion_approved', 'Deletion approved from notification bell.', user?.email || 'admin')
     await approveDeletion(id)
     await load()
     setActing(null)
@@ -60,11 +64,13 @@ function NotificationBell({ role }) {
   async function handleDeny(id) {
     setActing(id)
     await denyDeletion(id)
+    await logProjectActivity(id, 'deletion_denied', 'Deletion request denied from notification bell.', user?.email || 'admin')
     await load()
     setActing(null)
   }
 
-  const count = alerts.total + warranty.expiring.length + (role === 'admin' ? warranty.renewalFollowup.length : 0)
+  const amcCount = (warranty.amcExpiring?.length || 0) + (role === 'admin' ? (warranty.amcRenewalFollowup?.length || 0) : 0)
+  const count = alerts.total + warranty.expiring.length + amcCount + (role === 'admin' ? warranty.renewalFollowup.length : 0)
 
   return (
     <div style={{ position: 'relative' }} ref={panelRef}>
@@ -119,7 +125,7 @@ function NotificationBell({ role }) {
                 const days = daysSince(p.production_start_date)
                 return (
                   <div key={p.id} style={{ padding: '12px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFFBF0' }}>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C', marginBottom: 2 }}>{p.project_name}</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C', marginBottom: 2 }}>{maskProjectName(p.project_name)}</p>
                     <p style={{ fontSize: 12, color: '#8B4500' }}>
                       Production day <strong>{days}</strong> of ~30 — follow up client for pre-shipment payment
                     </p>
@@ -139,7 +145,7 @@ function NotificationBell({ role }) {
               </div>
               {alerts.deletions.map(p => (
                 <div key={p.id} style={{ padding: '12px 16px', borderBottom: '1px solid #E8E0C8' }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C', marginBottom: 2 }}>{p.project_name}</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C', marginBottom: 2 }}>{maskProjectName(p.project_name)}</p>
                   <p style={{ fontSize: 11, color: '#888888', marginBottom: 8 }}>
                     Requested by {p.deletion_requested_by || 'staff'}
                     {p.deletion_requested_at ? ` · ${daysSince(p.deletion_requested_at)}d ago` : ''}
@@ -173,7 +179,7 @@ function NotificationBell({ role }) {
               </div>
               {alerts.overdueUpdates.map(p => (
                 <div key={p.id} style={{ padding: '10px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFF8F8' }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{p.project_name}</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{maskProjectName(p.project_name)}</p>
                   <p style={{ fontSize: 11, color: '#8B0000' }}>Last updated {daysSince(p.last_updated_at)}d ago</p>
                 </div>
               ))}
@@ -190,9 +196,27 @@ function NotificationBell({ role }) {
               </div>
               {alerts.actionsDue.map(p => (
                 <div key={p.id} style={{ padding: '10px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFFBF0' }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{p.project_name}</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{maskProjectName(p.project_name)}</p>
                   <p style={{ fontSize: 11, color: '#8B4500' }}>→ {p.next_action}</p>
                   {p.assigned_to && <p style={{ fontSize: 11, color: '#888888' }}>Assigned: {p.assigned_to}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {role === 'admin' && alerts.escalated?.length > 0 && (
+            <div>
+              <div style={{ backgroundColor: '#F5F5DC', padding: '8px 16px', borderBottom: '1px solid #E8E0C8' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#8B0000', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Escalated After 3 Days ({alerts.escalated.length})
+                </span>
+              </div>
+              {alerts.escalated.map(p => (
+                <div key={p.id} style={{ padding: '10px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFF8F8' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{maskProjectName(p.project_name)}</p>
+                  <p style={{ fontSize: 11, color: '#8B0000' }}>{p.next_action || 'Action overdue'} | due {p.next_action_date}</p>
+                  {p.assigned_to && <p style={{ fontSize: 11, color: '#888888' }}>Assigned: {p.assigned_to}</p>}
+                  {p.owner_role && <p style={{ fontSize: 11, color: '#888888' }}>Owner role: {p.owner_role}</p>}
                 </div>
               ))}
             </div>
@@ -208,7 +232,7 @@ function NotificationBell({ role }) {
               </div>
               {warranty.expiring.map(p => (
                 <div key={p.id} style={{ padding: '10px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFFBF0' }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{p.project_name}</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{maskProjectName(p.project_name)}</p>
                   <p style={{ fontSize: 11, color: '#8B4500' }}>Warranty ends: {p.maintenance_end_date}</p>
                 </div>
               ))}
@@ -225,9 +249,54 @@ function NotificationBell({ role }) {
               </div>
               {warranty.renewalFollowup.map(p => (
                 <div key={p.id} style={{ padding: '10px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFF8F8' }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{p.project_name}</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{maskProjectName(p.project_name)}</p>
                   <p style={{ fontSize: 11, color: '#8B0000' }}>Warranty expired. Has client signed renewal?</p>
                   <p style={{ fontSize: 11, color: '#888888' }}>Status: {p.renewal_negotiation_status?.replace(/_/g, ' ') || 'None'}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* AMC contracts expiring within 30 days */}
+          {(warranty.amcExpiring?.length > 0) && (
+            <div>
+              <div style={{ backgroundColor: '#F5F5DC', padding: '8px 16px', borderBottom: '1px solid #E8E0C8' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#8B4500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  AMC Expiring Soon ({warranty.amcExpiring.length})
+                </span>
+              </div>
+              {warranty.amcExpiring.map(c => {
+                const daysLeft = Math.ceil((new Date(c.end_date) - new Date()) / 86400000)
+                return (
+                  <div key={c.id} style={{ padding: '10px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFFBF0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{c.contract_number}</p>
+                      <p style={{ fontSize: 11, color: '#888888' }}>{c.customers?.name}</p>
+                      <p style={{ fontSize: 11, color: daysLeft <= 7 ? '#8B0000' : '#8B4500', fontWeight: 600 }}>Expires in {daysLeft}d — {c.end_date}</p>
+                    </div>
+                    <a href={`/contracts/${c.id}`} style={{ fontSize: 11, color: '#D4AF37', fontWeight: 600, textDecoration: 'none', flexShrink: 0, marginLeft: 8 }}>View →</a>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* AMC renewal follow-up — admin only */}
+          {role === 'admin' && (warranty.amcRenewalFollowup?.length > 0) && (
+            <div>
+              <div style={{ backgroundColor: '#F5F5DC', padding: '8px 16px', borderBottom: '1px solid #E8E0C8' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#8B0000', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  AMC Renewal Needed ({warranty.amcRenewalFollowup.length})
+                </span>
+              </div>
+              {warranty.amcRenewalFollowup.map(c => (
+                <div key={c.id} style={{ padding: '10px 16px', borderBottom: '1px solid #E8E0C8', backgroundColor: '#FFF8F8', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#2C2C2C' }}>{c.contract_number}</p>
+                    <p style={{ fontSize: 11, color: '#888888' }}>{c.customers?.name}</p>
+                    <p style={{ fontSize: 11, color: '#8B0000' }}>Expired {c.end_date} · {c.renewal_status?.replace(/_/g, ' ') || 'No action yet'}</p>
+                  </div>
+                  <a href={`/contracts/${c.id}`} style={{ fontSize: 11, color: '#D4AF37', fontWeight: 600, textDecoration: 'none', flexShrink: 0, marginLeft: 8 }}>View →</a>
                 </div>
               ))}
             </div>
@@ -264,7 +333,7 @@ export default function Layout({ children }) {
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <NotificationBell role={role} />
+            <NotificationBell role={role} user={user} />
             {/* Close button on mobile */}
             <button className="desktop-hide" onClick={() => setSidebarOpen(false)}
               style={{ background: 'none', border: 'none', color: '#888888', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: 0 }}>
@@ -352,7 +421,7 @@ export default function Layout({ children }) {
           </button>
           <span className="font-brand" style={{ color: '#D4AF37', fontWeight: 700, fontSize: 16, letterSpacing: '0.02em' }}>FIEC Elevator</span>
           <div style={{ marginLeft: 'auto' }}>
-            <NotificationBell role={role} />
+            <NotificationBell role={role} user={user} />
           </div>
         </div>
 

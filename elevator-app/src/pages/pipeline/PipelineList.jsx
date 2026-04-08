@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getPipelines, PIPELINE_STAGES, PIPELINE_STEPS } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
+import { maskProjectName } from '../../lib/trialMode'
 
 const ELEVATOR_TYPES = [
   { value: 'passenger', label: 'Passenger Elevator' },
@@ -44,7 +45,7 @@ function PipelineCard({ pipeline }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
         <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: dot.color, flexShrink: 0 }} />
         <p style={{ fontWeight: 600, fontSize: 13, color: '#2C2C2C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {pipeline.installation_projects?.project_name || '—'}
+          {maskProjectName(pipeline.installation_projects?.project_name, 'Project')}
         </p>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
@@ -144,7 +145,7 @@ export default function PipelineList() {
                 onMouseLeave={e => e.currentTarget.style.borderColor = '#4D4D4D'}>
                 <div>
                   <p style={{ fontSize: 13, fontWeight: 600, color: '#F5F5DC' }}>
-                    {s.pipeline.installation_projects?.project_name} — Step {s.step_number}: {STEP_LABELS[s.step_number]}
+                    {maskProjectName(s.pipeline.installation_projects?.project_name, 'Project')} — Step {s.step_number}: {STEP_LABELS[s.step_number]}
                   </p>
                   <p style={{ fontSize: 12, color: '#888888' }}>Waiting {daysSince(s.unlocked_at)}d</p>
                 </div>
@@ -188,7 +189,7 @@ export default function PipelineList() {
                 style={{ display: 'block', border: '1px solid #D4AF37', backgroundColor: '#F5F5DC', padding: 12, textDecoration: 'none' }}
                 onMouseEnter={e => e.currentTarget.style.backgroundColor = '#EDE8CC'}
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F5F5DC'}>
-                <p style={{ fontWeight: 600, fontSize: 13, color: '#2C2C2C' }}>{p.installation_projects?.project_name || '—'}</p>
+                <p style={{ fontWeight: 600, fontSize: 13, color: '#2C2C2C' }}>{maskProjectName(p.installation_projects?.project_name, 'Project')}</p>
                 <p style={{ fontSize: 12, color: '#D4AF37', fontWeight: 600, marginTop: 4 }}>All {PIPELINE_STEPS.length} steps complete ✓</p>
               </Link>
             ))}

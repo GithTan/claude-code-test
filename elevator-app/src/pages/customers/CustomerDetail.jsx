@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getCustomer, getBuildings } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
+import { shouldHideContactNumbers } from '../../lib/trialMode'
 
 const thStyle = { padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em', backgroundColor: '#F5F5DC', borderBottom: '1px solid #D4AF37' }
 const tdStyle = { padding: '12px 16px', fontSize: 13, color: '#2C2C2C', borderBottom: '1px solid #E8E0C8' }
@@ -12,6 +13,7 @@ export default function CustomerDetail() {
   const { id } = useParams()
   const { role } = useAuth()
   const isAdmin = role === 'admin'
+  const hideContactNumbers = shouldHideContactNumbers()
   const [customer, setCustomer] = useState(null)
   const [buildings, setBuildings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -49,7 +51,9 @@ export default function CustomerDetail() {
           </div>
           <div>
             <p style={labelStyle}>Phone</p>
-            {isAdmin
+            {hideContactNumbers
+              ? <p style={{ ...valueStyle, color: '#CCCCCC', fontStyle: 'italic', fontSize: 13 }}>Hidden during trial</p>
+              : isAdmin
               ? <p style={valueStyle}>{customer.phone || '—'}</p>
               : <p style={{ ...valueStyle, color: '#CCCCCC', fontStyle: 'italic', fontSize: 13 }}>Visible to admin only</p>}
           </div>

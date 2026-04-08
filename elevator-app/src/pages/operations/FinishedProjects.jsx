@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getFinishedOpsProjects } from '../../lib/api'
+import { maskProjectName } from '../../lib/trialMode'
 
 const thStyle = { padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#888888', textTransform: 'uppercase', letterSpacing: '0.05em', backgroundColor: '#F5F5DC', borderBottom: '1px solid #D4AF37' }
 const tdStyle = { padding: '11px 14px', fontSize: 13, color: '#2C2C2C', borderBottom: '1px solid #E8E0C8', verticalAlign: 'top' }
@@ -94,7 +95,7 @@ export default function FinishedProjects() {
                       <Link to={`/operations/${p.id}`} style={{ color: '#2C2C2C', textDecoration: 'none', fontWeight: 600 }}
                         onMouseEnter={e => e.target.style.color = '#D4AF37'}
                         onMouseLeave={e => e.target.style.color = '#2C2C2C'}>
-                        {p.project_name}
+                        {maskProjectName(p.project_name)}
                       </Link>
                       {p.address && <p style={{ fontSize: 11, color: '#888888', fontWeight: 400, marginTop: 2 }}>{p.address}</p>}
                     </td>
