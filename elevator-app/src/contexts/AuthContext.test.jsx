@@ -37,27 +37,4 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('user')).toHaveTextContent('logged-out')
     })
   })
-
-  it('allows anonymous trial users in as operations_manager', async () => {
-    const { supabase } = await import('../lib/supabase')
-    supabase.auth.getSession.mockResolvedValueOnce({
-      data: {
-        session: {
-          access_token: 'trial-token',
-          user: {
-            id: 'trial-user',
-            is_anonymous: true,
-            app_metadata: { provider: 'anonymous' },
-            identities: [{ provider: 'anonymous' }],
-          },
-        },
-      },
-    })
-
-    render(<AuthProvider><TestComponent /></AuthProvider>)
-    await waitFor(() => {
-      expect(screen.getByTestId('user')).toHaveTextContent('logged-in')
-      expect(screen.getByTestId('role')).toHaveTextContent('operations_manager')
-    })
-  })
 })

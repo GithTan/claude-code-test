@@ -9,22 +9,7 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  function isTrialUser(currentUser) {
-    return Boolean(
-      currentUser?.is_anonymous ||
-      currentUser?.app_metadata?.provider === 'anonymous' ||
-      currentUser?.identities?.some(identity => identity.provider === 'anonymous')
-    )
-  }
-
   async function loadProfile(currentUser) {
-    if (isTrialUser(currentUser)) {
-      setRole('operations_manager')
-      _setViewerRole('operations_manager')
-      setUser(prev => prev ? { ...prev, full_name: 'Trial Access' } : prev)
-      return
-    }
-
     const userId = currentUser?.id
     const { data, error } = await getProfile(userId)
     if (error || !data) {
