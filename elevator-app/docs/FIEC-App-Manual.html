@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FIEC Elevator — App Manual</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', Arial, sans-serif; color: #2C2C2C; background: #fff; font-size: 13px; line-height: 1.6; }
+  .page { max-width: 800px; margin: 0 auto; padding: 40px 48px; }
+
+  /* Header */
+  .cover { background: #2C2C2C; color: #D4AF37; padding: 40px 48px; margin-bottom: 32px; }
+  .cover h1 { font-size: 28px; font-weight: 700; letter-spacing: 0.02em; margin-bottom: 6px; }
+  .cover p { color: #AAAAAA; font-size: 13px; }
+  .cover .url { color: #D4AF37; font-weight: 600; font-size: 15px; margin-top: 16px; background: #3D3D3D; display: inline-block; padding: 8px 16px; }
+
+  /* Login box */
+  .login-box { background: #F5F5DC; border: 1px solid #D4AF37; padding: 20px 24px; margin-bottom: 28px; }
+  .login-box h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #2C2C2C; margin-bottom: 12px; }
+  .login-row { display: flex; gap: 32px; }
+  .login-item { flex: 1; }
+  .login-item .label { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+  .login-item .value { font-size: 14px; font-weight: 700; color: #2C2C2C; }
+  .btn-demo { background: #D4AF37; color: #2C2C2C; font-weight: 700; padding: 10px 20px; font-size: 14px; display: inline-block; margin-top: 12px; }
+
+  /* Sections */
+  h2.section { font-size: 16px; font-weight: 700; color: #2C2C2C; margin: 32px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #D4AF37; text-transform: uppercase; letter-spacing: 0.04em; }
+  h3.sub { font-size: 13px; font-weight: 700; color: #D4AF37; background: #2C2C2C; display: inline-block; padding: 4px 12px; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  p { margin-bottom: 10px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 12.5px; }
+  th { background: #2C2C2C; color: #D4AF37; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; padding: 8px 12px; text-align: left; }
+  td { padding: 8px 12px; border-bottom: 1px solid #E8E0C8; vertical-align: top; }
+  tr:nth-child(even) td { background: #FAFAF0; }
+
+  /* Flow diagram */
+  .flow { background: #F5F5DC; border: 1px solid #D4AF37; padding: 20px 24px; margin: 12px 0 20px; }
+  .flow-step { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 8px; }
+  .flow-step:last-child { margin-bottom: 0; }
+  .flow-num { background: #D4AF37; color: #2C2C2C; font-weight: 700; font-size: 12px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .flow-arrow { color: #D4AF37; font-size: 18px; line-height: 24px; flex-shrink: 0; }
+  .flow-text { font-size: 13px; color: #2C2C2C; line-height: 24px; }
+  .flow-note { font-size: 11px; color: #888888; margin-left: 36px; margin-top: -6px; margin-bottom: 8px; }
+
+  /* Steps grid */
+  .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 20px; }
+  .step-item { background: #F5F5F5; border-left: 3px solid #D4AF37; padding: 8px 12px; font-size: 12px; }
+  .step-item .snum { font-weight: 700; color: #D4AF37; }
+  .step-item.key { background: #2C2C2C; }
+  .step-item.key .snum { color: #D4AF37; }
+  .step-item.key .stext { color: #FFFFFF; }
+
+  /* Role boxes */
+  .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0 20px; }
+  .role-box { border: 1px solid #D4AF37; padding: 16px; }
+  .role-box .role-title { font-weight: 700; font-size: 13px; color: #D4AF37; background: #2C2C2C; padding: 6px 12px; margin: -16px -16px 12px; }
+  .role-box ul { padding-left: 16px; }
+  .role-box li { font-size: 12px; color: #2C2C2C; margin-bottom: 4px; }
+
+  /* Alert tags */
+  .alert-tag { display: inline-block; background: #2C2C2C; color: #D4AF37; font-size: 10px; font-weight: 700; padding: 2px 7px; text-transform: uppercase; vertical-align: middle; }
+
+  /* Notice box */
+  .notice { background: #FFF8E8; border: 1px solid #D4AF37; padding: 14px 18px; margin: 16px 0; font-size: 12px; }
+  .notice strong { color: #8B4500; }
+
+  /* Footer */
+  .footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid #D4AF37; font-size: 11px; color: #AAAAAA; display: flex; justify-content: space-between; }
+
+  @media print {
+    .page { padding: 24px 32px; }
+    .cover { padding: 24px 32px; }
+    h2.section { page-break-before: auto; }
+    table { page-break-inside: avoid; }
+    .roles { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <h1>FIEC Elevator</h1>
+  <p>Staff App Manual — Trial Version · April 2026</p>
+  <div class="url">https://elevator-app-peach.vercel.app</div>
+</div>
+
+<div class="page">
+
+  <!-- LOGIN -->
+  <h2 class="section">How to Log In</h2>
+  <div class="login-box">
+    <h2>Staff Trial Access</h2>
+    <p style="margin-bottom:12px; font-size:12px; color:#555;">Open the app URL below and tap the gold button — no email or password needed.</p>
+    <div class="login-row">
+      <div class="login-item">
+        <div class="label">App URL</div>
+        <div class="value">elevator-app-peach.vercel.app</div>
+      </div>
+      <div class="login-item">
+        <div class="label">Staff Login</div>
+        <div class="value">Tap "Enter App →" on the login screen</div>
+      </div>
+    </div>
+    <div class="btn-demo">Enter App →</div>
+    <p style="margin-top:10px; font-size:11px; color:#888;">Admin signs in with their own email and password below the staff button.</p>
+  </div>
+
+  <!-- WHAT IT DOES -->
+  <h2 class="section">What This App Does</h2>
+  <p>The FIEC Elevator app manages every elevator project from first sales call to handover and ongoing maintenance. It replaces spreadsheets, group chats, and sticky notes with one system the whole team can see and update in real time.</p>
+
+  <!-- ROLES -->
+  <h2 class="section">Who Uses It</h2>
+  <div class="roles">
+    <div class="role-box">
+      <div class="role-title">Admin / Owner</div>
+      <ul>
+        <li>Full access to everything</li>
+        <li>Sees contract amounts and pricing</li>
+        <li>Manages finance, invoices, billing</li>
+        <li>Approves deletions and overrides</li>
+        <li>Views Admin Audit log</li>
+      </ul>
+    </div>
+    <div class="role-box">
+      <div class="role-title">Operations Staff</div>
+      <ul>
+        <li>Projects, jobs, breakdowns</li>
+        <li>Customer information</li>
+        <li>Pipeline steps assigned to them</li>
+        <li>No access to pricing or finance</li>
+        <li>Contact numbers visible when live</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- BIG PICTURE FLOW -->
+  <h2 class="section">How a Project Flows — Big Picture</h2>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>New client signs a contract</strong> → Add them under Customers</div></div>
+    <div class="flow-step"><div class="flow-arrow">↓</div><div class="flow-text"></div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>Start a Pipeline</strong> → 12-step checklist tracks drawings, payment, shipping, installation</div></div>
+    <div class="flow-step"><div class="flow-arrow">↓</div><div class="flow-text"></div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>Step 5 completed (Supplier Payment)</strong> → Project automatically appears in Project Status</div></div>
+    <div class="flow-step"><div class="flow-arrow">↓</div><div class="flow-text"></div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text"><strong>Team updates Project Status daily</strong> → Everyone sees current stage</div></div>
+    <div class="flow-step"><div class="flow-arrow">↓</div><div class="flow-text"></div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text"><strong>Project complete</strong> → Generate Handover Documents (certificates, warranty, etc.)</div></div>
+    <div class="flow-step"><div class="flow-arrow">↓</div><div class="flow-text"></div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div class="flow-text"><strong>Create Maintenance Contract (AMC)</strong> → Monthly visits scheduled</div></div>
+    <div class="flow-step"><div class="flow-arrow">↓</div><div class="flow-text"></div></div>
+    <div class="flow-step"><div class="flow-num">7</div><div class="flow-text"><strong>Ongoing:</strong> Log Service Visits, Breakdown Calls, and renew AMC when it expires</div></div>
+  </div>
+
+  <!-- PIPELINE 12 STEPS -->
+  <h2 class="section">New Installations — The 12 Steps</h2>
+  <p style="margin-bottom:12px;">Each step must be completed before the next one unlocks. Steps marked with a file icon require a document upload.</p>
+  <div class="steps">
+    <div class="step-item"><span class="snum">Step 1</span> <span class="stext">— Project Awarded (Admin confirms)</span></div>
+    <div class="step-item"><span class="snum">Step 2</span> <span class="stext">— Shop Drawings Prepared 📎</span></div>
+    <div class="step-item"><span class="snum">Step 3</span> <span class="stext">— Client Signs Drawings 📎</span></div>
+    <div class="step-item"><span class="snum">Step 4</span> <span class="stext">— Engineer Approval 📎</span></div>
+    <div class="step-item key"><span class="snum">Step 5</span> <span class="stext">— Payment to Supplier ← auto-adds to Project Status</span></div>
+    <div class="step-item"><span class="snum">Step 6</span> <span class="stext">— Production Started (enter end date)</span></div>
+    <div class="step-item"><span class="snum">Step 7</span> <span class="stext">— Production Monitoring</span></div>
+    <div class="step-item"><span class="snum">Step 8</span> <span class="stext">— Shipment (tracking number)</span></div>
+    <div class="step-item"><span class="snum">Step 9</span> <span class="stext">— Customs & Arrival</span></div>
+    <div class="step-item"><span class="snum">Step 10</span> <span class="stext">— Installation</span></div>
+    <div class="step-item"><span class="snum">Step 11</span> <span class="stext">— Testing 📎</span></div>
+    <div class="step-item"><span class="snum">Step 12</span> <span class="stext">— Turnover to Client 📎</span></div>
+  </div>
+
+  <!-- PROJECT STATUS -->
+  <h2 class="section">Project Status — Daily Tracking</h2>
+  <table>
+    <tr><th>Status</th><th>What it means</th></tr>
+    <tr><td><strong>On-Going Production</strong></td><td>Elevator being manufactured at factory</td></tr>
+    <tr><td><strong>On-Going Installation</strong></td><td>Team is installing on site</td></tr>
+    <tr><td><strong>For Permits</strong></td><td>Waiting for government permits</td></tr>
+    <tr><td><strong>For Inspection</strong></td><td>Awaiting inspector visit</td></tr>
+    <tr><td><strong>For Handover</strong></td><td>Ready to hand over to client</td></tr>
+    <tr><td><strong>Handed Over</strong></td><td>Project complete ✓</td></tr>
+    <tr><td><strong>On Hold</strong></td><td>Paused — reason in notes</td></tr>
+    <tr><td><strong>Breakdown</strong></td><td>Emergency issue on site</td></tr>
+  </table>
+  <p><strong>How to use:</strong> Update the status whenever something changes. Set a <em>Next Action</em> with a due date and assign a PIC (Person In Charge) so everyone knows who is responsible.</p>
+
+  <!-- MAINTENANCE CONTRACTS -->
+  <h2 class="section">Maintenance Contracts (AMC)</h2>
+  <p><strong>AMC = Annual Maintenance Contract.</strong> These are the recurring agreements where clients pay FIEC to service their elevators regularly.</p>
+  <p>When a contract is within 60 days of expiry, a <strong>Renewal Tracking</strong> panel appears on the contract page. Update it as the negotiation moves forward:</p>
+  <div class="flow" style="padding: 14px 20px;">
+    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px;">
+      <span style="background:#3D3D3D; color:#888; padding:4px 10px;">Not started</span>
+      <span style="color:#D4AF37;">→</span>
+      <span style="background:#3D3D3D; color:#D4AF37; padding:4px 10px;">Client contacted</span>
+      <span style="color:#D4AF37;">→</span>
+      <span style="background:#3D3D3D; color:#D4AF37; padding:4px 10px;">In negotiation</span>
+      <span style="color:#D4AF37;">→</span>
+      <span style="background:#3D3D3D; color:#D4AF37; padding:4px 10px;">Proposal sent</span>
+      <span style="color:#D4AF37;">→</span>
+      <span style="background:#2C6E2C; color:#FFFFFF; padding:4px 10px;">Renewed ✓</span>
+    </div>
+  </div>
+  <p style="margin-top:8px;"><strong>AMC Billing:</strong> Go to <em>AMC Billing</em> in the sidebar to see which clients need invoicing this month. Mark each as Billed → Paid.</p>
+
+  <!-- BREAKDOWN CALLS -->
+  <h2 class="section">Breakdown Calls</h2>
+  <table>
+    <tr><th>Priority</th><th>When to use</th></tr>
+    <tr><td><strong>Critical</strong></td><td>Elevator stuck with passengers / hospital / fire escape route</td></tr>
+    <tr><td><strong>High</strong></td><td>Elevator stopped, no passengers stuck</td></tr>
+    <tr><td><strong>Medium</strong></td><td>Partial issue, elevator still running</td></tr>
+    <tr><td><strong>Low</strong></td><td>Minor complaint, cosmetic issue</td></tr>
+  </table>
+  <p>Log it immediately when a client calls. Assign to a technician. Update status: <strong>Open → In Progress → Resolved.</strong></p>
+
+  <!-- HOW THE TEAM WORKS TOGETHER -->
+  <h2 class="section">How the Team Works Together</h2>
+  <div class="roles">
+    <div class="role-box">
+      <div class="role-title">Owner / Admin</div>
+      <ul>
+        <li>Approves Pipeline Steps 1, 3, 11, 12</li>
+        <li>Sets contract amounts</li>
+        <li>Handles finance and invoices</li>
+        <li>Approves/denies deletion requests</li>
+        <li>Monitors Admin Audit log</li>
+      </ul>
+    </div>
+    <div class="role-box">
+      <div class="role-title">Operations Team</div>
+      <ul>
+        <li>Updates Project Status daily</li>
+        <li>Completes assigned pipeline steps</li>
+        <li>Logs service visits after each job</li>
+        <li>Logs breakdown calls immediately</li>
+        <li>Adds items to Dashboard when needed</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION BELL -->
+  <h2 class="section">Notification Bell (Top of Sidebar)</h2>
+  <p>The <strong>🔔 bell icon</strong> shows automatic alerts. A red number means alerts are waiting. Check it daily.</p>
+  <table>
+    <tr><th>Alert</th><th>What it means</th></tr>
+    <tr><td>Pre-Shipment Payment Due</td><td>Production project is 23+ days in — client needs to pay before shipping</td></tr>
+    <tr><td>Deletion Requests</td><td>Staff asked to delete a project — admin approves or denies</td></tr>
+    <tr><td>No Update in 7+ Days</td><td>A project hasn't been touched — needs attention</td></tr>
+    <tr><td>Next Actions Due</td><td>A next action was set and it's past the due date</td></tr>
+    <tr><td>Warranty Expiring</td><td>Maintenance end date is within 7 days</td></tr>
+    <tr><td>AMC Expiring Soon</td><td>A maintenance contract expires within 30 days</td></tr>
+    <tr><td>AMC Renewal Needed</td><td>Contract expired — no renewal action taken yet (admin only)</td></tr>
+  </table>
+
+  <!-- QUICK REFERENCE -->
+  <h2 class="section">Quick Reference — Common Tasks</h2>
+  <table>
+    <tr><th>Task</th><th>Where to go</th></tr>
+    <tr><td>Add a new client</td><td>Customers → New Customer</td></tr>
+    <tr><td>Start a new installation</td><td>New Installations → Start Pipeline</td></tr>
+    <tr><td>Update a project status</td><td>Project Status → click project → change status</td></tr>
+    <tr><td>Log a breakdown call</td><td>Breakdown Calls → New Breakdown</td></tr>
+    <tr><td>Schedule a service visit</td><td>Service Visits → New Job</td></tr>
+    <tr><td>Add a maintenance contract</td><td>Maintenance Contracts → New Contract</td></tr>
+    <tr><td>Generate handover documents</td><td>Project Status → project → Handover Documents</td></tr>
+    <tr><td>Check monthly AMC billing</td><td>AMC Billing (sidebar)</td></tr>
+    <tr><td>See all projects on a timeline</td><td>Project Status → Timeline</td></tr>
+    <tr><td>Check pending alerts</td><td>Click the 🔔 bell in the sidebar</td></tr>
+    <tr><td>Add a team action item</td><td>Dashboard → type in the Needs Attention box</td></tr>
+  </table>
+
+  <!-- TRIAL NOTICE -->
+  <div class="notice">
+    <strong>Trial Mode Notice:</strong> During this staff review, project names show as "Project 0421" (real names hidden) and contact numbers show as "Hidden during trial." Document uploads in the pipeline are optional. All of this will be restored when the app goes live.
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>FIEC Elevator — Confidential Staff Manual</span>
+    <span>April 2026 · For internal use only</span>
+  </div>
+
+</div>
+</body>
+</html>
